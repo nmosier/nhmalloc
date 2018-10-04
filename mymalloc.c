@@ -46,7 +46,7 @@ int main (int argc, char* argv[]){
   node * node_available = find_available_spot(head,size);
 
   node * end_node;
-  end_node = find_end_node(node * head);
+  end_node = find_end_node(head);
   unsigned long long * p_used_end = end_node -> p_end;  //find the end of the used memory
 
   //current breakpoint
@@ -66,43 +66,42 @@ int main (int argc, char* argv[]){
 
    //else there is not enough memory
    else if (size + p_used_end >= brkp){   //sbrk(0) returns the current breakpoint
-      brk(brkp+Break_Increment_Size);     //set new the break point
+      brk(brkp + Break_Increment_Size);     //set new the break point
       node * new_node = push_node_end(head, size, p_used_end);
       return new_node -> p_start;
     }
+    return NULL;
 }
 
 node * find_available_spot(node * head, size_t size){
-  node * current = head;
-  while(current != NULL){
-    if ((current -> size_chunk >= size) && current->free){
-      return current;
-    }
-    current = current -> next;
-  }
-  return current;
+   node * current = head;
+   while(current != NULL){
+     if ((current -> size_chunk >= size) && current->free){
+       return current;
+     }
+     current = current -> next;
+   }
+   return current;
 }
 
 node * push_node_end(node * head, size_t size, unsigned long long * p_used_end){
-  node * new_node;
-  new_node -> size_chunk = size;
-  new_node -> p_end = p_used_end + size;
-  new_node -> p_start = p_used_end + 4;  //is 4 the next address?
-
-  //traverse through the linked list
-  node * current = head;
-  while(current != NULL){
-    current = current -> next;
-  }
-  current -> next = new_node;
-  current -> next -> next = NULL;
-  return new_node;
+   //traverse through the linked list
+   node * current = head;
+   while(current != NULL){
+     current = current -> next;
+   }
+   node * new_node = current -> next;
+   new_node -> size_chunk = size;
+   new_node -> p_end = p_used_end + size;
+   new_node -> p_start = p_used_end + 4;  //is 4 the next address?
+   new_node -> next = NULL;
+   return new_node;
 }
 
 node * find_end_node(node * head){
-  node * current = head;
-  while(current != NULL){
-     current = current -> next;
-  }
-  return current;
+   node * current = head;
+   while(current != NULL){
+      current = current -> next;
+   }
+   return current;
 }
