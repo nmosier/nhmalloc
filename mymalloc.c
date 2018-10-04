@@ -23,9 +23,6 @@ node * find_available_spot(node * head, size_t size);
 node * push_node_end(node * head, size_t size, unsigned long long * p_used_end);
 node * find_end_node(node * head);
 
-
-node * head; //to be fixed since global variable is bad
-
 int main (int argc, char* argv[]){
    //init head node to store meta info
 
@@ -39,38 +36,46 @@ int main (int argc, char* argv[]){
    *(s+4) = 'o';
    printf("%s \n", s);
 
+
+
 }
 //to be implemented: where to store the nodes of the linked_list
- void * mymalloc (size_t size){
-  //find available spot in the heap
-  node * node_available = find_available_spot(head,size);
-
-  node * end_node;
-  end_node = find_end_node(head);
-  unsigned long long * p_used_end = end_node -> p_end;  //find the end of the used memory
-
+ void * mymalloc (node * head, size_t size){
   //current breakpoint
   unsigned long long * brkp = sbrk(0);
 
-   //if there is an empty spot of a compatible size because there was a call to myfree()
-   if (node_available != NULL){
-       node_available -> free = 0;
-       node_available -> size_chunk = size;
-       return node_available -> p_start;
-   }
-   //else if there is enough memory to grow up and not pass the breakpoint
-   else if (size + p_used_end < brkp){
-      node * new_node = push_node_end(head, size, p_used_end);
-      return new_node -> p_start;
-   }
+  if (head == NULL){ //if the heap is empty
+     printf("in");
+     brk(brkp + Break_Increment_Size); //increase the breakpoint
+     //create a node to store the meta_info
+     //brkp + 1
+  }
+  else{
+      //find available spot in the heap
+      node * node_available = find_available_spot(head,size);
+      node * end_node = find_end_node(head);
+      unsigned long long * p_used_end = end_node -> p_end;  //find the end of the used memory
 
-   //else there is not enough memory
-   else if (size + p_used_end >= brkp){   //sbrk(0) returns the current breakpoint
-      brk(brkp + Break_Increment_Size);     //set new the break point
-      node * new_node = push_node_end(head, size, p_used_end);
-      return new_node -> p_start;
-    }
-    return NULL;
+       //if there is an empty spot of a compatible size because there was a call to myfree()
+       if (node_available != NULL){
+           node_available -> free = 0;
+           node_available -> size_chunk = size;
+           return node_available -> p_start;
+       }
+       //else if there is enough memory to grow up and not pass the breakpoint
+       else if (size + p_used_end < brkp){
+          node * new_node = push_node_end(head, size, p_used_end);
+          return new_node -> p_start;
+       }
+
+       //else there is not enough memory
+       else if (size + p_used_end >= brkp){   //sbrk(0) returns the current breakpoint
+          brk(brkp + Break_Increment_Size);     //set new the break point
+          node * new_node = push_node_end(head, size, p_used_end);
+          return new_node -> p_start;
+        }
+   }
+   return NULL;
 }
 
 node * find_available_spot(node * head, size_t size){
