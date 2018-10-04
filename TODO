@@ -1,0 +1,2 @@
+* I think that the BRK increment size should DOUBLE each time BRK is called. This is how Arrays work in Java, e.g., and how vectors work in C++
+* it might be good to have the code be modular with respect to the data stucture being used -- that way it will be easy to replace a linked list with a binary tree later on, if we so choose.
