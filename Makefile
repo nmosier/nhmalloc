@@ -1,7 +1,7 @@
 CFLAGS=-Wall -pedantic -g
 
 
-mymalloc: mymalloc.o 
+mymalloc: mymalloc.o list.o
 	gcc -o $@ $^
 
 %.o: %.c
@@ -9,4 +9,4 @@ mymalloc: mymalloc.o
 
 .PHONY: clean
 clean:
-	rm -f *.o mytest
+	rm -f *.o mymalloc
