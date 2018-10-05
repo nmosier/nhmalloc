@@ -1,7 +1,9 @@
-typedef struct {
+#include <stdio.h>
+
+typedef struct list_node_t_ {
    size_t size;     // size of memory block (not including struct header)
    int free;        // is the block free or mallocated?
-   list_node *tail; // next memory block in heap (ptr to header)
+   struct list_node_t_ *tail; // next memory block in heap (ptr to header)
 } list_node_t;
 
 typedef struct {
@@ -10,8 +12,12 @@ typedef struct {
 } list_t;
 
 
-list_t *list_append(list_node_t *nodep, list_t *listp);
-list_t *list_prepend(list_node_t *nodep, list_t *listp);
-list_t *list_insert(list_node_t *nodep, list_t *listp);
+void list_append(list_node_t *nodep, list_t *listp);
+void list_prepend(list_node_t *nodep, list_t *listp);
+void list_insert(list_node_t *nodep, list_t *listp);
 list_node_t *list_minlwrbnd(size_t lwrbnd, list_t *listp);
-void list_insertafter(list_node_t *new_elem, list_node_t *ref_elem);
+void list_insertafter(list_node_t *new_elem, list_node_t *ref_elem, list_t *listp);
+
+void list_print(list_t *listp);
+void list_dump(FILE *stream, list_t *listp);
+list_node_t *list_validate(list_t *listp);
