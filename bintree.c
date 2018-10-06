@@ -46,6 +46,27 @@ btree_t *btree_insert(const bnode_t *node, btree_t *tree) {
 
 
 
-bnode_t *btree_minlwrbnd(size_t val) {
-   
+bnode_t *btree_minlwrbnd(size_t val, btree_t *tree) {
+   bnode_t *curnode, *minnode;
+   size_t minval, curval;
+
+   curnode = (bnode_t *) tree;
+   minnode = NULL;
+   minval = (size_t) -1;
+   while (curnode) {
+      curval = curnode->val;
+      if (curval <= minval && curval >= val) {
+         minnode = curnode;
+         minval = curval;
+      }
+
+      if (val < curval) {
+         curnode = curnode->leftp;
+      } else {
+         curnode = curnode->rightp;
+      }
+   }
+
+   return minnode;
 }
+
