@@ -1,12 +1,16 @@
 CFLAGS=-Wall -pedantic -g
+OFLAGS= -r -fPIC
+SHLIBFLAGS=-rdynamic -shared -fPIC
 
+mymalloc.so: mymalloc.o bintree.o
+		gcc $(SHLIBFLAGS) -o $@ $^
 
-mymalloc: mymalloc.o list.o
+test: test.o bintree.o mymalloc.o
 	gcc -o $@ $^
 
 %.o: %.c
-	gcc $(CFLAGS) -c -o $@ $^
+	gcc $(CFLAGS) $(OFLAGS) -c -o $@ $^
 
 .PHONY: clean
 clean:
-	rm -f *.o mymalloc
+	rm -f *.o *.so mymalloc 
