@@ -3,11 +3,12 @@
  * custom written for malloc
  */
 
-#include "bintree.h"
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
+
+#include "btree.h"
 
 #define LOG(str) write(STDERR_FILENO, str, strlen(str))
 
@@ -21,16 +22,11 @@ char eprintf_buf[1000];
 #define COLOR_GREEN "\x1b[32m"
 #define COLOR_RESET "\x1b[0m"
 
-void btree_update(bnode_t *node);
-//void btree_free(bnode_t *node);
-//void btree_alloc(bnode_t *node);
-
 btree_t btree_insert(bnode_t *node, btree_t tree) {
    size_t newsize = node->size;
    
    if (tree == BTREE_EMPTY) {
       node->leftp = node->rightp = node->parentp = NULL;
-      node->free = BNODE_FREE;
       return node;
    }
 
@@ -55,9 +51,7 @@ btree_t btree_insert(bnode_t *node, btree_t tree) {
    *curnode_childp = node;
    node->parentp = curnode;
    node->leftp = node->rightp = NULL;
-   node->free = BNODE_FREE;
-   btree_update(node);
-   
+
    return tree;
 }
 
@@ -67,34 +61,28 @@ btree_t btree_insert(bnode_t *node, btree_t tree) {
  *       as _node_'s parent's _dir_ child
  * PARAMS:
  *  - node: node to collapse tree around
- *  - dir: direciton of child (0=left, 1=right)
  * RETURN: new tree
  * NOTE: tree should be non-NULL
  */
 btree_t btree_collapse(bnode_t *node, bnode_t *child, btree_t tree) {
    bnode_t *parentp;
-   int free_mask;
    
    if (node == tree) {
+      if (child) {
+         child->parentp = NULL;
+      }
       return child;
    }
 
    parentp = node->parentp;
    if (parentp->leftp == node) {
       parentp->leftp = child;
-      free_mask = BLEFT_FREE;
    } else {
       parentp->rightp = child;
-      free_mask = BRIGHT_FREE;
    }
 
    if (child) {
       child->parentp = parentp;
-      btree_update(child);
-   } else {
-      /* reset child free bit */
-      parentp->free &= ~free_mask;
-      btree_update(parentp);
    }
 
    return tree;
@@ -128,8 +116,6 @@ btree_t btree_remove(bnode_t *node, btree_t tree) {
       }
       leftch = node->leftp;
       rightch = node->rightp;
-      rnode->free &= BNODE_FREE; // only keep node free bit
-      rnode->free |= (node->free & (BLEFT_FREE | BRIGHT_FREE)); // assume children free bits
       
       /* update _node_'s children */
       if (leftch) {
@@ -157,14 +143,14 @@ bnode_t *btree_minlwrbnd(size_t size, btree_t tree) {
    curnode = (bnode_t *) tree;
    minnode = NULL;
    minval = (size_t) -1;
-   while (curnode && curnode->free) {
+   while (curnode) {
       curval = curnode->size;
-      if ((curnode->free & BNODE_FREE) && curval <= minval && curval >= size) {
+      if (curval <= minval && curval >= size) {
          minnode = curnode;
          minval = curval;
       }
 
-      if (size < curval && (curnode->free & BLEFT_FREE)) {
+      if (size < curval) {
          curnode = curnode->leftp;
       } else {
          curnode = curnode->rightp;
@@ -174,11 +160,11 @@ bnode_t *btree_minlwrbnd(size_t size, btree_t tree) {
    return minnode;
 }
 
+// btree_print's auxiliary functions
 bnode_t *btree_print_row(bnode_t *node);
 int btree_depth_right(btree_t tree);
 void btree_print_aux(btree_t tree, const char *prefix, btree_t term);
 
-char sbuf[1000];
 void btree_print(btree_t tree) {
    eprintf("tree@%p\n", (void *) tree);
    
@@ -230,11 +216,13 @@ bnode_t *btree_print_row(bnode_t *node) {
    bnode_t *prev = NULL;
    const char *stredge = "----";
    const char *strnoedge = "    ";
+   char sbuf[1000], snode[100];
 
    for (bnode_t *b_it = node; b_it; b_it = b_it->rightp) {
-      char snode[100];
       sprintf(snode, "%zu @ %p", b_it->size, (void *) b_it);
-      sprintf(sbuf, "%s%*.*s%s%s", (b_it->free & BNODE_FREE) ? COLOR_GREEN : COLOR_RED, ENTRY_WIDTH - (int) strlen(stredge), ENTRY_WIDTH - (int) strlen(stredge), snode, COLOR_RESET, b_it->rightp ? stredge : strnoedge);
+      sprintf(sbuf, "%*.*s%s", ENTRY_WIDTH - (int) strlen(stredge),
+              ENTRY_WIDTH - (int) strlen(stredge), snode,
+              b_it->rightp ? stredge : strnoedge);
       write(STDERR_FILENO, sbuf, strlen(sbuf));
       prev = b_it;
    }
@@ -251,34 +239,6 @@ int btree_depth_right(btree_t tree) {
    }
 
    return depth;
-}
-
-
-
-/* btree_update()
- */
-void btree_update(bnode_t *node) {
-   int free_mask, parent_free;
-   bnode_t *parentp;
-
-   while ((parentp = node->parentp)) {
-      free_mask = (parentp->leftp == node) ? BLEFT_FREE : BRIGHT_FREE;
-      parent_free = parentp->free;
-      parent_free &= ~free_mask; // reset free bit
-      if (node->free) {
-         /* conditionally set child free bit */
-         parent_free |= free_mask;
-      }
-
-      /* check if overall free status of parent modified */
-      if ((parentp->free == BTREE_USED && parent_free == BTREE_USED) ||
-          (parentp->free != BTREE_USED && parent_free != BTREE_USED)) {
-         parentp->free = parent_free;
-         break;
-      }
-      parentp->free = parent_free;
-      node = parentp;
-   }
 }
 
 
@@ -362,86 +322,4 @@ size_t btree_array(bnode_t *root, bnode_t **arr) {
    } else {
       return 0;
    }
-}
-
-
-void memblocks_init(btree_t *memblocks) {
-   //   fprintf(stderr, "memblocks_init\n");
-   
-   *memblocks = NULL;
-   return;
-}
-
-bnode_t *memblock_find(size_t size, btree_t *memblocks) {
-   //   fprintf(stderr, "memblock_find\n");
-   return btree_minlwrbnd(size, *memblocks);   
-}
-
-
-void memblock_insert(void *begin_addr, void *end_addr, btree_t *memblocks) {
-   //   fprintf(stderr, "memblock_insert\n");
-   bnode_t *header;
-
-   /* initialize memblock at begin_addr */
-   header = (bnode_t *) begin_addr;
-   header->size = (char *) end_addr - (char *) begin_addr - sizeof(bnode_t);
-   
-   /* insert into tree */
-   *memblocks = btree_insert(header, *memblocks);
-}
-
-/* memblock_split
- * DESC: splits memory block into two different blocks, the first of size
- *       _size_ and the second of the remaining size
- * NOTE: will only split the memblock if both resulting blocks will be
- *       nonzero in size
- */
-int memblock_split(bnode_t *block, size_t size, btree_t *memblocks) {
-   //   eprintf("splitting block of size %zu...\n", size);
-   
-   bnode_t *block2;
-   size_t total_size = block->size;
-   size_t remaining_size;
-
-   /* check if there's enough space for 2nd block */
-   if (total_size <= size + sizeof(bnode_t)) {
-      return false;
-   }
-
-   /* split blocks */
-   remaining_size = total_size - size - sizeof(bnode_t);
-   block->size = size; // update size of first block
-   block2 = (bnode_t *) ((char *) (block + 1) + size);
-
-   /* initialize new block */
-   block2->size = remaining_size;
-   block2->free = block->free;
-
-
-   /* remove original block from tree */
-   *memblocks = btree_remove(block, *memblocks);
-   
-   /* insert new blocks into tree */
-   *memblocks = btree_insert(block, *memblocks);
-   *memblocks = btree_insert(block2, *memblocks);
-
-   return true;
-}
-
-
-void memblock_free(void *begin_addr) {
-   bnode_t *block = ((bnode_t *) begin_addr) - 1;
-   block->free |= BNODE_FREE;
-   btree_update(block);
-}
-
-void memblock_allocate(void *begin_addr) {
-   bnode_t *block = ((bnode_t *) begin_addr) - 1;
-   block->free &= ~BNODE_FREE;
-   btree_update(block);
-}
-
-bool memblocks_validate(btree_t *memblocks) {
-   bnode_t *errblk =  btree_validate(*memblocks);
-   return errblk != NULL;
 }

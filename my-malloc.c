@@ -5,29 +5,27 @@
 #include <unistd.h>
 #include <string.h>
 
+#include "my-malloc.h"
+#include "memblock.h"
+
 // debugging macros
 #define LOG(str) write(STDERR_FILENO, str, strlen(str))
 char eprintf_buf[1000];
 #define eprintf(fmt, ...) sprintf(eprintf_buf, fmt, __VA_ARGS__),   \
    LOG(write)
 
-#include "memblock.h"
 
-//functions prototypes
-void *malloc(size_t size);
-void free(void *ptr);
-
-
-intptr_t BREAK_INCREMENT = 0x1000;
-void *PROGRAM_BREAK_ADDR = NULL;
+static intptr_t BREAK_INCREMENT = 0x1000;
+static void *PROGRAM_BREAK_ADDR = NULL;
 memblocks_t memblocks;
-
-
 
 void *malloc(size_t size) {
    memblock_t *memblock_header;
    void *memblock;
 
+   // DEBUG
+   //    memblocks_print(&memblocks);
+   
    /* check size is nonzero */
    if (size == 0) {
       return NULL;
@@ -68,17 +66,14 @@ void *malloc(size_t size) {
    memblock_split(memblock_header, size, &memblocks);
    
    memblock = (void *) (memblock_header + 1);
-   memblock_allocate(memblock);
+   memblock_allocate(memblock, &memblocks);
    return memblock;
 }
 
-void free(void *ptr) {
+void free(void *ptr) {   
    if (ptr) {
-      memblock_free(ptr);
+      memblock_free(ptr, &memblocks);
    }
+
+      memblocks_print(&memblocks);
 }
-
-
-
-
-
