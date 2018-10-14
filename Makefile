@@ -2,11 +2,11 @@ CFLAGS=-Wall -pedantic -g
 OFLAGS= -r -fPIC
 SHLIBFLAGS=-rdynamic -shared -fPIC
 
-mymalloc.so: mymalloc.o bintree.o
+my-malloc.so: my-malloc.o memblock.o btree.o list.o
 		gcc $(SHLIBFLAGS) -o $@ $^
 
-test: test.o bintree.o mymalloc.o
-	gcc -o $@ $^
+test: test.o btree.o list.o memblock.o my-malloc.so
+	gcc -o $@ test.o btree.o list.o memblock.o
 
 %.o: %.c
 	gcc $(CFLAGS) $(OFLAGS) -c -o $@ $^
