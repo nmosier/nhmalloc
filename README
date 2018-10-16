@@ -1,1 +1,10 @@
-https://en.cppreference.com/w/c/types/integerhttps://renenyffenegger.ch/notes/development/languages/C-C-plus-plus/GCC/create-libraries/indexhttps://gcc.gnu.org/onlinedocs/cpp/Variadic-Macros.html
+
+FUTURE WORK:
+* better balancing when removing/inserting elements from/to btree -- right now, it always inserts/removes from the left subtree. This may cause the tree to be left-heavy, which is especially bad since the left side contains the smallest-sized memblocks, which will presumably be allocated more frequently than the larger-sized blocks (not sure if this is necessarily true, however -- just my intuition).
+
+
+
+
+https://en.cppreference.com/w/c/types/integer
+https://renenyffenegger.ch/notes/development/languages/C-C-plus-plus/GCC/create-libraries/index
+https://gcc.gnu.org/onlinedocs/cpp/Variadic-Macros.html
