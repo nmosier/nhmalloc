@@ -250,10 +250,7 @@ typedef enum btree_e_t_ {
    BTREE_E_SIZE,
    BTREE_E_USED
 } btree_e_t;
-//#define BTREE_E_SUCCESS 0
-//#define BTREE_E_PARENT  1
-//#define BTREE_E_SIZE    2
-//#define BTREE_E_USED    3
+
 static btree_e_t btree_errno_;
 
 /* btree_validate()
