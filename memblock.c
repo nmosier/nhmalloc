@@ -3,6 +3,7 @@
 #include "memblock.h"
 #include "btree.h"
 #include "list.h"
+#include "debug.h"
 
 /* memblocks_init()
  * DESC: initialize empty memblocks structure
@@ -106,8 +107,13 @@ void memblock_free(void *begin_addr, memblocks_t *memblocks) {
 
 void memblock_allocate(void *begin_addr, memblocks_t *memblocks) {
    memblock_t *block = ((memblock_t *) begin_addr) - 1;
-   block->free = false;
    memblocks->root = btree_remove(block, memblocks->root);
+
+   /* note: make block false after removal as to avoid
+    *       violating the invariant that the btree only
+    *       contains free memblocks
+    */
+   block->free = false;
 }
 
 
@@ -119,7 +125,26 @@ void memblocks_print(memblocks_t *memblocks) {
 
 
 bool memblocks_validate(memblocks_t *memblocks) {
-   //   memblock_t *errblk =  btree_validate(*memblocks);
-   //   return errblk != NULL;
-   return false; // to be implemented
+   const memblock_t *invalid;
+
+   if ((invalid = btree_validate(memblocks->root))) {
+      char sbuf[1000];
+      sprintf(sbuf, "memblocks_validate: "COLOR_RED"invalid btree node"  \
+              COLOR_RESET" @ %p", (void *) invalid);
+      btree_perror(sbuf);
+      LOG("dumping tree...\n");
+      btree_print(memblocks->root);
+      return false;
+   }
+   if ((invalid = list_validate(memblocks))) {
+      char sbuf[1000];
+      sprintf(sbuf, "memblocks_validate: "COLOR_RED"invalid list node"   \
+              COLOR_RESET" @ %p", (void *) invalid);
+      list_perror(sbuf);
+      LOG("dumping list...\n");
+      btree_print(memblocks);
+      return false;
+   }
+   
+   return true;
 }
