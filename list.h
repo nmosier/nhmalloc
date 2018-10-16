@@ -12,6 +12,9 @@ void list_append(list_node_t *nodep, list_t *listp);
 void list_insert(list_node_t *nodep, list_t *listp);
 
 void list_print(list_t *listp);
-//list_node_t *list_validate(list_t *listp);
+const list_node_t *list_validate(const list_t *listp);
+int list_errno();
+const char *list_strerror(int errno);
+void list_perror(const char *prefix);
 
 #endif
