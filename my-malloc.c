@@ -8,12 +8,7 @@
 #include "my-malloc.h"
 #include "memblock.h"
 
-// debugging macros
-#define LOG(str) write(STDERR_FILENO, str, strlen(str))
-char eprintf_buf[1000];
-#define eprintf(fmt, ...) sprintf(eprintf_buf, fmt, __VA_ARGS__),   \
-   LOG(write)
-
+#include "debug.h"
 
 static intptr_t BREAK_INCREMENT = 0x1000;
 static void *PROGRAM_BREAK_ADDR = NULL;
@@ -67,6 +62,13 @@ void *malloc(size_t size) {
    
    memblock = (void *) (memblock_header + 1);
    memblock_allocate(memblock, &memblocks);
+
+   if (DEBUG) {
+      if (!memblocks_validate(&memblocks)) {
+         LOG("malloc: program exiting due to internal error.\n");
+      }
+   }
+
    return memblock;
 }
 
@@ -75,5 +77,48 @@ void free(void *ptr) {
       memblock_free(ptr, &memblocks);
    }
 
-      memblocks_print(&memblocks);
+   if (DEBUG) {
+      if (!memblocks_validate(&memblocks)) {
+         LOG("free: program exiting due to internal malloc error.\n");
+         exit(1);
+      }
+   }
+}
+
+void *calloc(size_t nmemb, size_t size) {
+   void *ptr = NULL;
+   size_t bytes = nmemb * size;
+
+   if (bytes) {
+      /* mallocate memory */
+      ptr = malloc(bytes);
+      /* zero out memory */
+      memset(ptr, 0, bytes);
+   }
+
+   return ptr;
+}
+
+void *realloc(void *ptr, size_t size) {
+   // IMPROVEMENT: look to see if there's contiguous memory after this
+   void *new_ptr;
+   size_t old_size;
+
+   if (ptr) {
+      if (size) {
+         /* get old size of memblock */
+         old_size = ((memblock_t *) ptr - 1)->size;
+         new_ptr = malloc(size);
+         memcpy(new_ptr, ptr, old_size);
+         free(ptr);
+         return new_ptr;
+      } else {
+         /* size = 0, same as free */
+         free(ptr);
+         return NULL;
+      }
+   } else {
+      /* same as malloc */
+      return malloc(size);
+   }
 }
