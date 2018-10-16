@@ -7,20 +7,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
-
+#include "debug.h"
 #include "btree.h"
-
-#define LOG(str) write(STDERR_FILENO, str, strlen(str))
-
-char eprintf_buf[1000];
-#define eprintf(fmt, ...) sprintf(eprintf_buf, fmt, __VA_ARGS__),   \
-   LOG(eprintf_buf)
-
-
-// colors
-#define COLOR_RED   "\x1b[31m"
-#define COLOR_GREEN "\x1b[32m"
-#define COLOR_RESET "\x1b[0m"
 
 btree_t btree_insert(bnode_t *node, btree_t tree) {
    size_t newsize = node->size;
@@ -109,6 +97,8 @@ btree_t btree_remove(bnode_t *node, btree_t tree) {
 
       /* collapse _rnode_ from tree */
       tree = btree_collapse(rnode, rnode->leftp, tree);
+      // VALID TREE
+
       
       /* replace _node_ with _rnode_ in tree */
       if (pnode) {
@@ -126,13 +116,19 @@ btree_t btree_remove(bnode_t *node, btree_t tree) {
       }
       rnode->leftp = leftch;
       rnode->rightp = rightch;
+      rnode->parentp = pnode;
+
+      /* if replacing root, then update _tree_ */
+      if (pnode == NULL) {
+         tree = rnode;
+      }
    } else {
       /* since _node_ has no left child, just collapse
        * it out of the tree
        */
       tree = btree_collapse(node, node->rightp, tree);
    }
-   
+
    return tree;
 }
 
@@ -173,7 +169,7 @@ void btree_print(btree_t tree) {
 }
 
 
-#define ENTRY_WIDTH 20
+#define ENTRY_WIDTH 25
 void btree_print_aux(btree_t tree, const char *prefix, btree_t term) {
    bnode_t *last_node;
    int depth = btree_depth_right(tree);
@@ -217,7 +213,6 @@ bnode_t *btree_print_row(bnode_t *node) {
    const char *stredge = "----";
    const char *strnoedge = "    ";
    char sbuf[1000], snode[100];
-
    for (bnode_t *b_it = node; b_it; b_it = b_it->rightp) {
       sprintf(snode, "%zu @ %p", b_it->size, (void *) b_it);
       sprintf(sbuf, "%*.*s%s", ENTRY_WIDTH - (int) strlen(stredge),
@@ -245,81 +240,82 @@ int btree_depth_right(btree_t tree) {
 int btree_validate_cmp(const void *lhs, const void *rhs);
 size_t btree_nodecount(bnode_t *root);
 size_t btree_array(bnode_t *root, bnode_t **arr);
+const bnode_t *btree_validate_aux(const bnode_t *nodep, const bnode_t *parentp,
+                            size_t minsize, size_t maxsize);
+
+
+typedef enum btree_e_t_ {
+   BTREE_E_SUCCESS,
+   BTREE_E_PARENT,
+   BTREE_E_SIZE,
+   BTREE_E_USED
+} btree_e_t;
+//#define BTREE_E_SUCCESS 0
+//#define BTREE_E_PARENT  1
+//#define BTREE_E_SIZE    2
+//#define BTREE_E_USED    3
+static btree_e_t btree_errno_;
+
 /* btree_validate()
- * DESC: checks to make sure there are no memory gaps
- *       between the memory blocks in the tree
+ * DESC: checks recursively to make sure btree satisfied following properties:
+ *  - all nodes to left less than or equal to root
+ *  - all nodes to right greater than or equal to root
+ *  - all non-root nodes have parents; root's parent is NULL
  * PARAMS:
+ *  - tree: (full, i.e. not subtree) tree to validate
+ * RETVAL: returns NULL if valid; returns first invalid node otherwise
  */
-bnode_t *btree_validate(btree_t tree) {
-   size_t addrs_len = btree_nodecount(tree);
-   bnode_t *addrs[addrs_len], *errblk;
+const bnode_t *btree_validate(const btree_t tree) {
+   return btree_validate_aux(tree, NULL, 0, (size_t) -1);
+}
+const bnode_t *btree_validate_aux(const bnode_t *nodep, const bnode_t *parentp, size_t minsize, size_t maxsize) {
+   const bnode_t *invalid;
+
+   btree_errno_ = BTREE_E_SUCCESS;
    
-   
-   /* get array of nodes */
-   if (btree_array(tree, addrs) != addrs_len) {
-      LOG("btree_validate: internal error.\n");
-      exit(1);
+   if (nodep == NULL) {
+      /* null tree is valid */
+      return NULL;
    }
 
-   /* sort array of nodes by address */
-   qsort(addrs, addrs_len, sizeof(bnode_t *), btree_validate_cmp);
-
-   /* compare address gaps against block sizes */
-   errblk = NULL;
-   for (bnode_t **addr_it = addrs; addr_it != addrs + addrs_len - 1; ++addr_it) {
-      bnode_t *cur_addr = addr_it[0], *next_addr = addr_it[1];
-      if (cur_addr->size + sizeof(bnode_t) != (char *) next_addr - (char *) cur_addr) {
-         errblk = cur_addr;
-         break;
-      }
+   if (nodep->parentp != parentp) {
+      /* invalid parent pointer */
+      btree_errno_ = BTREE_E_PARENT;
+      return nodep;
    }
 
-   if (errblk) {
-      eprintf("memblocks_validate: validation "COLOR_RED\
-              "FAILED"COLOR_RESET" for node %p in\n",
-              (void *) errblk);
-      /* print sorted list */
-      for (int i = 0; i < addrs_len; ++i) {
-         eprintf("%p\t", (void *) addrs[i]);
-      }
-      LOG("\n");
-      btree_print(tree);
-   } else {
-      eprintf("memblocks_validate: validation "COLOR_GREEN\
-              "succeeded"COLOR_RESET".%s", "\n"); // requires ≥1 variadic param
+   if (nodep->size < minsize || nodep->size > maxsize) {
+      /* violates size bounds */
+      btree_errno_ = BTREE_E_SIZE;
+      return nodep;
    }
 
+   if (!nodep->free) {
+      /* only free nodes should be in tree */
+      btree_errno_ = BTREE_E_USED;
+      return nodep;
+   }
    
-   return errblk;
+   if ((invalid = btree_validate_aux(nodep->leftp, nodep, minsize, nodep->size)) == NULL) {
+      invalid = btree_validate_aux(nodep->rightp, nodep, nodep->size, maxsize);
+   }
+   return invalid;
 }
 
-int btree_validate_cmp(const void *lhs, const void *rhs) {
-   bnode_t *lhsp, *rhsp;
-   lhsp = *((bnode_t **) lhs);
-   rhsp = *((bnode_t **) rhs);
-   return (char *) lhsp - (char *) rhsp;
+int btree_errno() {
+   return (int) btree_errno_;
 }
 
-size_t btree_nodecount(bnode_t *root) {
-   if (root) {
-      return btree_nodecount(root->leftp) + btree_nodecount(root->rightp) + 1;
-   } else {
-      return 0;
+const char *btree_strerror(int errno) {
+   switch ((btree_e_t) errno) {
+   case BTREE_E_SUCCESS: return "Success";
+   case BTREE_E_PARENT:  return "Invalid parent pointer";
+   case BTREE_E_SIZE:    return "Size out of range in ordered subtree";
+   case BTREE_E_USED:    return "Node is not free";
+   default:              return "Unknown error";
    }
 }
 
-/* btree_array()
- * DESC: writes addresses of nodes to array
- * RETVAL: returns # of addresses written
- */
-size_t btree_array(bnode_t *root, bnode_t **arr) {
-   if (root) {
-      size_t count = 1;
-      *arr = root;
-      count += btree_array(root->leftp, arr + count);
-      count += btree_array(root->rightp, arr + count);
-      return count;
-   } else {
-      return 0;
-   }
+void btree_perror(const char *prefix) {
+   eprintf("%s: %s\n", prefix, btree_strerror(btree_errno_));
 }
