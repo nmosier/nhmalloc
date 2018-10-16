@@ -23,20 +23,7 @@ int main(int argc, char *argv[]) {
    char *strs[100];
    size_t strlens[100];
 
-
-   void *ptrs[iterations];
-   for (int i = 0; i < iterations; ++i) {
-      ptrs[i] = malloc(i+1);
-   }
-   for (int i = 0; i < iterations; ++i) {
-      free(ptrs[i]);
-      //            memblocks_print(&memblocks);
-   }
-
-   return 0;
-
-   // srandom(time(0));
-   srandom(SEED);
+   srandom(time(0));
 
    for (int i = 0; i < iterations; ++i) {
       strlens[i] = (random() % malloc_max) + 1;
@@ -45,20 +32,17 @@ int main(int argc, char *argv[]) {
    }
 
    for (int i = 0; i < iterations; ++i) {
-      eprintf("%s\n", strs[i]);
+      // compare strings
+      if (strncmp(strs[i], base, strlens[i] - 1) != 0) {
+         // print out correct vs. incorrect string
+         eprintf("test: string mismatch at pointer %p:\n", (void *) strs[i]);
+         eprintf(COLOR_RED"%s"COLOR_RESET, strs[i]);
+         eprintf(COLOR_GREEN"%.*s"COLOR_RESET, (int) strlens[i], base);
+      }
+      
       free(strs[i]);
-      //      btree_print(memblocks);
    }
 
-   //   memblocks_validate(&memblocks);
    exit(0);
-   //   srandom(SEED);
-   for (int i = 0; i < iterations; ++i) {
-      strlens[i] = (random() % malloc_max);
-      strs[i] = malloc(strlens[i]);
-      sprintf(strs[i], "%.*s", (int) strlens[i] - 1, base);
-      //      btree_print(memblocks);
-   }
 
-   return 0;
 }
