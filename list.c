@@ -60,26 +60,10 @@ void list_insert(list_node_t *nodep, list_t *listp) {
    } else {
       /* insert somewhere in middle of list */
       list_node_t *tail = (list_node_t *) ((char *) nodep + nodep->size + sizeof(list_node_t));
+      nodep->prevp = tail->prevp;
       tail->prevp = nodep;
    }
 }
-
-
-/*
-void list_insertafter(list_node_t *new_elem, list_node_t *ref_elem, list_t *listp) {
-
-
-   
-   list_node_t *swap = ref_elem->tail;
-   ref_elem->tail = new_elem;
-   new_elem->tail = swap;
-
-   // update back of list if needed
-   if (listp->back == ref_elem) {
-      listp->back = new_elem;
-   }
-}
-*/
 
 
 void list_print(list_t *listp) {
@@ -112,6 +96,16 @@ void list_print(list_t *listp) {
    LOG(COLOR_RESET"\n");
 }
 
+
+
+typedef enum list_e_t_ {
+   LIST_E_SUCCESS,
+   LIST_E_PREV,
+   LIST_E_SIZE
+} list_e_t;
+
+static list_e_t list_errno_;
+
 /* list_validate()
  * DESC:   checks that the list fulfills the following properties:
              (i)   the addresses of nodes are in ascending order
@@ -121,26 +115,57 @@ void list_print(list_t *listp) {
  * RETVAL: returns pointer to first node that violates above conditions; if list is
  *         valid, returns NULL
  */
+const list_node_t *list_validate(const list_t *listp) {
+   const list_node_t *list_it, *back, *prevp;
 
-// TO BE FIXED
-/*
-list_node_t *list_validate(list_t *listp) {
-   list_node_t *prev = listp->front;
+   list_errno_ = LIST_E_SUCCESS;
+   
+   /* prime the loop */
+   back = listp->back;
+   list_it = listp->front;
+   prevp = NULL;
 
-   // make sure prev is valid node
-   if (prev == NULL || prev->size == 0) {
-      return prev;
+   if (list_it == NULL) {
+      return NULL;
    }
-
-   // validate all remaining nodes
-   for (list_node_t *list_it = prev->tail; list_it; prev = list_it, list_it = list_it->tail) {
-         if (((char *) (prev + 1)) + prev->size != (char *) list_it) {
-            return list_it;
-         } else if (list_it->size == 0) {
-            return list_it;
-         }
+   if (prevp != list_it->prevp) {
+      list_errno_ = LIST_E_PREV;
+      return list_it;
    }
+   if (list_it->size == 0) {
+      list_errno_ = LIST_E_SIZE;
+      return list_it;
+   }
+   prevp = list_it;
+   do {
+      list_it = (list_node_t *) ((char *) list_it + list_it->size + sizeof(list_node_t));
+      if (prevp != list_it->prevp) {
+         list_errno_ = LIST_E_PREV;
+         return list_it;
+      }
+      if (list_it->size == 0) {
+         list_errno_ = LIST_E_SIZE;
+         return list_it;
+      }
+      prevp = list_it;
+   } while (list_it != back);
 
    return NULL;
 }
-*/
+
+int list_errno() {
+   return (int) list_errno_;
+}
+
+const char *list_strerror(int errno) {
+   switch ((list_e_t) errno) {
+   case LIST_E_SUCCESS: return "Success";
+   case LIST_E_PREV:    return "Previous node mismatch";
+   case LIST_E_SIZE:    return "Block is of size 0";
+   default:             return "Unknown error";
+   }
+}
+
+void list_perror(const char *prefix) {
+   eprintf("%s: %s\n", prefix, list_strerror(list_errno_));
+}
