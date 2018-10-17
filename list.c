@@ -4,23 +4,11 @@
 #include <assert.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 #include "list.h"
 #include "memblock.h"
-
-#define COLOR_RED   "\x1b[31m"
-#define COLOR_GREEN "\x1b[32m"
-#define COLOR_RESET "\x1b[0m"
-
-
-#define LOG(str) write(STDERR_FILENO, str, strlen(str))
-
-char eprintf_buf[1000];
-#define eprintf(fmt, ...) sprintf(eprintf_buf, fmt, __VA_ARGS__),   \
-   LOG(eprintf_buf)
-
-
-#define DEBUG 1
+#include "debug.h"
 
 /* list_append()
  * 
@@ -36,7 +24,13 @@ void list_append(list_node_t *nodep, list_t *listp) {
 
       if (DEBUG) {
          tail = (list_node_t *) ((char *) back + back->size + sizeof(list_node_t));
-         assert(tail == nodep);
+         if (tail != nodep) {
+            eprintf("list_append: appended node at unexpected address %p (expected %p)\n",
+                    (void *) nodep, (void *) tail);
+            LOG("dumping list...\n");
+            list_print(listp);
+            exit(1);
+         }
       }
 
       nodep->prevp = back;

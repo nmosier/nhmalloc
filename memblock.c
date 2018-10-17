@@ -3,6 +3,7 @@
 #include "memblock.h"
 #include "btree.h"
 #include "list.h"
+#include "assert.h"
 #include "debug.h"
 
 /* memblocks_init()
@@ -101,12 +102,22 @@ int memblock_split(memblock_t *block, size_t size, memblocks_t *memblocks) {
  */
 void memblock_free(void *begin_addr, memblocks_t *memblocks) {
    memblock_t *block = ((memblock_t *) begin_addr) - 1;
+
+   if (DEBUG) {
+      assert (block->free == false);
+   }
+   
    block->free = true;
    memblocks->root = btree_insert(block, memblocks->root);
 }
 
 void memblock_allocate(void *begin_addr, memblocks_t *memblocks) {
    memblock_t *block = ((memblock_t *) begin_addr) - 1;
+
+   if (DEBUG) {
+      assert (block->free == true);
+   }
+
    memblocks->root = btree_remove(block, memblocks->root);
 
    /* note: make block false after removal as to avoid
@@ -142,7 +153,7 @@ bool memblocks_validate(memblocks_t *memblocks) {
               COLOR_RESET" @ %p", (void *) invalid);
       list_perror(sbuf);
       LOG("dumping list...\n");
-      btree_print(memblocks);
+      list_print(memblocks);
       return false;
    }
    

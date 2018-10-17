@@ -4,23 +4,29 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <assert.h>
 
-#include "my-malloc.h"
 #include "memblock.h"
-
 #include "debug.h"
+#include "signal.h"
 
 static intptr_t BREAK_INCREMENT = 0x1000;
 static void *PROGRAM_BREAK_ADDR = NULL;
 memblocks_t memblocks;
 
 void *malloc(size_t size) {
+   /* TEMPORARY: try 8-byte alignment */
+   //   eprintf("%zu\n", size);
+   if (size == 4096) {
+      //      size *= 2;
+      //      size = 5000;
+      //      size = 5002;
+      size *= 2;
+   }
+
    memblock_t *memblock_header;
    void *memblock;
 
-   // DEBUG
-   //    memblocks_print(&memblocks);
-   
    /* check size is nonzero */
    if (size == 0) {
       return NULL;
@@ -38,18 +44,32 @@ void *malloc(size_t size) {
       memblock_header = memblock_find(size, &memblocks);
       
       if (memblock_header == NULL) {
-         LOG("mymalloc: expanding the heap...\n");
+         if (DEBUG) {
+            LOG("mymalloc: expanding the heap...\n");
+         }
 
          /* failed to find sufficiently sized memblock,
           * so reserve more */
          void *old_break, *new_break;
          old_break = sbrk(BREAK_INCREMENT);
-         
+
+
          if (old_break == (void *) -1) {
             /* handle sbrk error */
             return NULL;
          }
 
+         //         if (old_break != PROGRAM_BREAK_ADDR) {
+            /* another program sneakily moved the program break,
+             * so insert this useless chunk into the list */
+         // memblock_insert(PROGRAM_BREAK_ADDR, old_break, &memblocks);
+         // memblock_allocate((memblock_t *) PROGRAM_BREAK_ADDR + 1, &memblocks);
+         //         }
+         
+         if (DEBUG) {
+            assert (old_break == PROGRAM_BREAK_ADDR);
+         }
+         
          new_break = (void *) ((char *) old_break + BREAK_INCREMENT);
          memblock_insert(old_break, new_break, &memblocks);
 
@@ -66,13 +86,21 @@ void *malloc(size_t size) {
    if (DEBUG) {
       if (!memblocks_validate(&memblocks)) {
          LOG("malloc: program exiting due to internal error.\n");
+         exit(1);
       }
+      memset(memblock, 0, size); // make sure its writable
    }
 
    return memblock;
 }
 
-void free(void *ptr) {   
+void free(void *ptr) {
+   if (DEBUG && ptr) {
+      memblock_t *header = (memblock_t *) ptr - 1;
+      size_t size = header->size;
+      memset(ptr, 0, size);
+   }
+   
    if (ptr) {
       memblock_free(ptr, &memblocks);
    }
@@ -102,14 +130,15 @@ void *calloc(size_t nmemb, size_t size) {
 void *realloc(void *ptr, size_t size) {
    // IMPROVEMENT: look to see if there's contiguous memory after this
    void *new_ptr;
-   size_t old_size;
+   size_t old_size, cpy_size;
 
    if (ptr) {
       if (size) {
          /* get old size of memblock */
          old_size = ((memblock_t *) ptr - 1)->size;
          new_ptr = malloc(size);
-         memcpy(new_ptr, ptr, old_size);
+         cpy_size = (old_size < size) ? old_size : size;
+         memcpy(new_ptr, ptr, cpy_size);
          free(ptr);
          return new_ptr;
       } else {
