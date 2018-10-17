@@ -16,13 +16,7 @@ memblocks_t memblocks;
 
 void *malloc(size_t size) {
    /* TEMPORARY: try 8-byte alignment */
-   //   eprintf("%zu\n", size);
-   if (size == 4096) {
-      //      size *= 2;
-      //      size = 5000;
-      //      size = 5002;
-      size *= 2;
-   }
+   //         eprintf("%zu\n", size);
 
    memblock_t *memblock_header;
    void *memblock;
@@ -78,6 +72,10 @@ void *malloc(size_t size) {
       }
    } while (memblock_header == NULL);
 
+   if (DEBUG) {
+      assert(memblock_header->free);
+   }
+   
    memblock_split(memblock_header, size, &memblocks);
    
    memblock = (void *) (memblock_header + 1);
@@ -91,6 +89,7 @@ void *malloc(size_t size) {
       memset(memblock, 0, size); // make sure its writable
    }
 
+   //   eprintf("%p\n", (void *) memblock);
    return memblock;
 }
 

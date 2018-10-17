@@ -11,9 +11,9 @@
 
 //#define SEED  100
 #define SEED time(NULL)
-#define NPTRS 1000
+#define NPTRS 5000
 #define NOPS 10000
-#define MAXSIZE 50000
+#define MAXSIZE 4096
 
 typedef struct {
    char *ptr;
