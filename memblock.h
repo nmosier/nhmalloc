@@ -1,15 +1,8 @@
 #ifndef __MEMBLOCK_H
 #define __MEMBLOCK_H
 
-#define BTREE
-
-#ifdef BTREE
-#include "bintree.h"
-#else
-   #ifdef LIST
    #include "list.h"
-   #endif
-#endif
+
 // memblocks operations
 void memblocks_init(memblocks_t *memblocks);
 
