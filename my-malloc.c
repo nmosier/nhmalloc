@@ -129,12 +129,22 @@ void *calloc(size_t nmemb, size_t size) {
 void *realloc(void *ptr, size_t size) {
    // IMPROVEMENT: look to see if there's contiguous memory after this
    void *new_ptr;
+   memblock_t *old_memblock;
    size_t old_size, cpy_size;
 
    if (ptr) {
       if (size) {
-         /* get old size of memblock */
-         old_size = ((memblock_t *) ptr - 1)->size;
+         old_memblock = (memblock_t *) ptr - 1;
+         old_size = old_memblock->size;
+
+         /*
+         new_ptr = memblock_merge(old_memblock, MEMBLOCK_MERGE_NEXTP, &memblocks);
+         if (new_ptr == NULL) {
+            new_ptr = memblock_merge(old_memblock, MEMBLOCK_MERGE_PREVP, &memblocks);
+            }
+         if (new_ptr == NULL) {
+            new_ptr = malloc(size);
+            } */
          new_ptr = malloc(size);
          cpy_size = (old_size < size) ? old_size : size;
          memcpy(new_ptr, ptr, cpy_size);
