@@ -1,10 +1,88 @@
+ASSIGNMENT 3 README
+AUTHOR: Nick Mosier
+10/18/2018
+
+
+FILES:
+ * my-malloc.c: contains implementations of malloc(), free(), calloc(), realloc()
+ * memblock.c (memblock.h): contains underlying functions for handling 'memblocks', the
+      fundamental type of chunks of memory that malloc allocates. These functions them-
+      selves wrap more specialized functions in btree.c and list.c
+ * btree.c (btree.h): contains functions for modifying the binary tree of free memblocks
+ * list.c (list.h): contains functions for modifying the (reverse) linked list of all
+      memblocks.
+ * test.c: standalone program for testing my-malloc
+ * tests.sh: runs test program on multiple different configurations
+
+
+OVERVIEW:
+The fundamental type of a memory block managed by my-malloc is 'memblock_t'. These memory
+blocks are in the heap (data segment) and end at the program break.
+The memory blocks are organized in two structures:
+ * the FREE TREE: a binary search tree that contains all free memory blocks, sorted by size
+ * the MEMBLOCK LIST: a (reverse) linked list containing all memory blocks (free and used)
+When memory is requested through malloc(), the free tree is searched for the memory block
+with the best-fit size for the amount requested (minimum size block_size such that
+block_size ≥ size_requested). Before allocation, the memory block is split in two (if there
+is enough room for the overhead) such that any extra space is reinserted into the free tree
+as a new memblock. The (pointer to the non-reserved memory after the header of the) split
+memblock of the requested size is then returned by malloc().
+
+
+INVARIANTS:
+The invariants of the underlying my-malloc memblock structures upon entry and exit of malloc(),
+free(), calloc(), and realloc() are the following:
+ * the free tree never contains allocated memory blocks
+ * the memblock list never contains two adjacent free memory blocks
+ * there are no memory gaps, i.e. each node of the memblock list
+   borders two other nodes (except for the end nodes)
+
+
+DEBUGGING:
+Enable DEBUG mode:
+* DEBUG FLAG: there is a DEBUG flag in "debug.h" -- to enable debug mode, change
+   >   #define DEBUG 0
+              to
+  >    #define DEBUG 1
+
+Compiling with my-malloc debug mode enabled will have malloc() and free() validate the
+state of the free tree and memblock list just before returning. The validation functions,
+wrapped in memblocks_validate(), verify the structures and enforce all the invariants
+listed under INVARIANTS.
+
+If an inconsistency is detected, then my-malloc will print out the free tree and the
+memblock list in full (it can be quite long...). You'll definitely need a wide screen
+to view the free tree properly if there are more than say 30 free memblocks. The functions
+for printing out the list and tree manually are:
+ * btree_print()
+ * list_print()
+
+
+TESTING:
+The file test.c contains a program that tests my-malloc and is configurable through
+command-line arguments. Here's the usage:
+       usage: ./test [-n maxsize] [-p nptrs] [-o noperations] [-s seed]
+              -n: maximum size (in bytes) per allocation using malloc()
+              -p: maximum number of pointers referencing any allocated memory in heap
+              -o: number of "operations", defined as a call to malloc() or free()
+              -s: seed for pseudorandom number generator used for randomizing test
+Note that all command-line arguments are optional (there are presets in the program).
+
 
 FUTURE WORK:
-* better balancing when removing/inserting elements from/to btree -- right now, it always inserts/removes from the left subtree. This may cause the tree to be left-heavy, which is especially bad since the left side contains the smallest-sized memblocks, which will presumably be allocated more frequently than the larger-sized blocks (not sure if this is necessarily true, however -- just my intuition).
-* improve realloc so that it checks if the memblock directly following the one in question is free -- in this case, if it is of sufficient size of course, it can simply be merged with the currently allocated memblock in question
+* the last 3 fields of the header for each memory block are not used when the block is
+  allocated -- my-malloc should utilize this by returning pointers beginning at these
+  inactive fields (and appropriately increase the memblock sizes, of course)
+* balancing of free tree: one possible heuristic would be to calculate how close the
+  root is to some experimentally-determined weighted center of the heap (this works
+  because all memblocks are contiguous; furthermore, it can't be the regular center
+  since smaller blocks are stored on one side of the tree, but they take up less space)
+* improve realloc: try to merge allocated memblock with adjacent memblocks if they
+  are free and, combined, the new block satisfies the size request. Otherwise,
+  find brand new block in free tree and copy there.
 
 
-
-https://en.cppreference.com/w/c/types/integer
-https://renenyffenegger.ch/notes/development/languages/C-C-plus-plus/GCC/create-libraries/index
-https://gcc.gnu.org/onlinedocs/cpp/Variadic-Macros.html
+RESOURCES:
+* https://en.cppreference.com/w/c/types/integer
+* https://renenyffenegger.ch/notes/development/languages/C-C-plus-plus/GCC/create-libraries/index
+* https://gcc.gnu.org/onlinedocs/cpp/Variadic-Macros.html
