@@ -93,6 +93,66 @@ int memblock_split(memblock_t *block, size_t size, memblocks_t *memblocks) {
    return true;
 }
 
+/* memblock_merge()
+ * DESC: merges adjacent blocks into one (both free & allocated blocks)
+ * PARAMS:
+ *  - block: center block whose adjacent blocks should be merged
+ *  - direction: specifies whether previous block, next block, or both 
+ *               should be merged
+ *  - memblocks: pointer to memblocks structure
+ * RETVAL: returns pointer to merged block (if no merge possible, returns pointer
+ *         to _block_
+ */
+memblock_t *memblock_merge(memblock_t *block, int direction, memblocks_t *memblocks) {
+   memblock_t *mergedp, *prevp, *nextp, *root;
+   bool next_free, prev_free;
+
+   if (direction == 0) {
+      /* nothing to do */
+      return block;
+   }
+   
+   root = memblocks->root;
+   
+   prevp = (direction & MEMBLOCK_MERGE_PREV) ? block->prevp : NULL;
+   prev_free = prevp && prevp->free;
+
+   if (block != memblocks->back && (direction & MEMBLOCK_MERGE_NEXT)) {
+      nextp = (memblock_t *) ((char *) block + block->size + sizeof(memblock_t));
+   } else {
+      nextp = NULL;
+   }
+   next_free = nextp && nextp->free;
+
+   mergedp = block;
+   if (block->free) {
+      /* remove from tree */
+      root = btree_remove(block, root);
+   }
+
+   if (prev_free) {
+      /* remove from tree; merge */
+      root = btree_remove(prevp, root);
+      list_merge(prevp, mergedp, memblocks);
+      mergedp = prevp;
+   }
+
+   if (next_free) {
+      /* remove from tree; merge */
+      root = btree_remove(nextp, root);
+      list_merge(mergedp, nextp, memblocks);
+   }
+
+   mergedp->free = block->free;
+   if (mergedp->free) {
+      root = btree_insert(mergedp, root);
+   }
+
+   memblocks->root = root;
+   return mergedp;
+}
+
+
 /* memblock_free()
  * DESC: frees block of memory (called by free())
  * PARAMS:
@@ -106,11 +166,20 @@ void memblock_free(void *begin_addr, memblocks_t *memblocks) {
    if (DEBUG) {
       assert (block->free == false);
    }
+
+
+   block = memblock_merge(block, MEMBLOCK_MERGE_NEXT | MEMBLOCK_MERGE_PREV, memblocks);
    
    block->free = true;
    memblocks->root = btree_insert(block, memblocks->root);
 }
 
+/* memblock_allocate()
+ * DESC: allocates block with allocatable memory starting at _begin_addr_
+ * PARAMS:
+ *  - begin_addr: beginning of allocatable memory
+ *  - memblocks: pointer to memblocks structure
+ */
 void memblock_allocate(void *begin_addr, memblocks_t *memblocks) {
    memblock_t *block = ((memblock_t *) begin_addr) - 1;
 
@@ -127,14 +196,23 @@ void memblock_allocate(void *begin_addr, memblocks_t *memblocks) {
    block->free = false;
 }
 
-
-
+/* memblocks_print()
+ * DESC: prints both memblocks list as well as free tree
+ * PARAMS:
+ *  - memblocks: pointer to global memblocks struct
+ */
 void memblocks_print(memblocks_t *memblocks) {
    list_print(memblocks);
    btree_print(memblocks->root);
 }
 
 
+/* memblocks_validate()
+ * DESC: validates memblocks list and free tree
+ * PARAMS:
+ *  - memblocks: pointer to memblocks structure
+ * RETVAL: returns true if structures are valid; false otherwise
+ */
 bool memblocks_validate(memblocks_t *memblocks) {
    const memblock_t *invalid;
 
