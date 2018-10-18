@@ -55,10 +55,14 @@ void list_insert(list_node_t *nodep, list_t *listp) {
 void list_merge(list_node_t *firstp, list_node_t *secondp, list_t *listp) {
    list_node_t *thirdp = (list_node_t *) ((char *) secondp + secondp->size + sizeof(list_node_t));
 
+   /*
    if (DEBUG) {
-      assert (firstp->free && secondp->free);
-   }
-
+      if (firstp->free || secondp->free) {
+         eprintf("list_merge: both nodes %p and %p must be free\n", (void *) firstp, (void *) secondp);
+         exit(1);
+      }
+      } */
+   
    /* update list back pointer if end of list; update prevp of next block
     * otherwise */
    if (secondp == listp->back) {
