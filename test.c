@@ -11,8 +11,8 @@
 
 //#define SEED  100
 #define SEED time(NULL)
-#define NPTRS 5000
-#define NOPS 10000
+#define NPTRS 1000
+#define NOPS 20000
 #define MAXSIZE 4096
 
 typedef struct {
@@ -27,11 +27,65 @@ bool validate(mirrored_ptr_t *mirptr);
 void read_mirror(mirrored_ptr_t *dst, int src_fd);
 
 int main(int argc, char *argv[]) {
+   /* get command line options */
+   const char *optstring = "p:o:n:s:h";
+   bool valid = true;
+   int opt;
+   int nptrs = NPTRS, nops = NOPS;
+   unsigned int seed = SEED;
+   size_t maxsize = MAXSIZE;
+
+   while ((opt = getopt(argc, argv, optstring)) >= 0) {
+      switch (opt) {
+      case 'p':
+         if (sscanf(optarg, "%d", &nptrs) < 0) {
+            eprintf("%s: option -p (# of pointers): invalid integer value %s\n", argv[0], optarg);
+            valid = false;
+         }
+         break;
+      case 'o':
+         if (sscanf(optarg, "%d", &nops) < 0) {
+            eprintf("%s: option -o (# of malloc operations): invalid integer value %s\n",
+                    argv[0], optarg);
+            valid = false;
+         }
+         break;
+      case 'n':
+         if (sscanf(optarg, "%zu", &maxsize) < 0) {
+            eprintf("%s: option -p: invalid integer value %s\n", argv[0], optarg);
+            valid = false;
+         }
+         break;
+      case 's':
+         if (sscanf(optarg, "%ud", &seed) < 0) {
+            eprintf("%s: option -p: invalid integer value %s\n", argv[0], optarg);
+            valid = false;
+         }
+         break;
+      case 'h':
+      default:
+         valid = false;
+         break;
+      }
+   }
+
+   if (!valid) {
+      eprintf("usage: %s [-n maxsize] [-p nptrs] [-o noperations] [-s seed]\n", argv[0]);
+      exit(3);
+   }
+   
    const char *tmp_file = "__test.tmp";
    int cmp_fd, urand_fd;
-   mirrored_ptr_t ptrs[NPTRS] = {{0}};
+   mirrored_ptr_t ptrs[nptrs];
    int nsuccess = 0, nfail = 0;
 
+   /* intialize ptrs array */
+   for (int i = 0; i < nptrs; ++i) {
+      mirrored_ptr_t ptr = {0};
+      ptrs[i] = ptr;
+   }
+
+   
    // randomly select pointer from list
    // if nll, allocate a random size & fill
    // if not null, then free, compare mem, then write
@@ -50,11 +104,11 @@ int main(int argc, char *argv[]) {
       exit(1);
    }
    
-   srandom(SEED);
+   srandom(seed);
 
    /* MAIN TEST LOOP */
-   for (int op = 0; op < NOPS; ++op) {
-      int index = random() % NPTRS;
+   for (int op = 0; op < nops; ++op) {
+      int index = random() % nptrs;
       if (ptrs[index].ptr) {
          /* validate memory contents then free */
          if (validate(&ptrs[index])) {
@@ -71,7 +125,7 @@ int main(int argc, char *argv[]) {
          int size;
 
          /* allocate random size */
-         size = random() % MAXSIZE;
+         size = random() % maxsize;
          ptrs[index].size = size;
          ptrs[index].ptr = (char *) malloc(size);
          
