@@ -8,9 +8,8 @@ typedef memblock_t list_node_t;
 typedef memblocks_t list_t;
 
 void list_append(list_node_t *nodep, list_t *listp);
-//void list_prepend(list_node_t *nodep, list_t *listp);
 void list_insert(list_node_t *nodep, list_t *listp);
-
+void list_merge(list_node_t *firstp, list_node_t *secondp, list_t *listp);
 void list_print(list_t *listp);
 const list_node_t *list_validate(const list_t *listp);
 int list_errno();
