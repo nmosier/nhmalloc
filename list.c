@@ -38,14 +38,6 @@ void list_append(list_node_t *nodep, list_t *listp) {
    }
 }
 
-// never actually used
-/*
-void list_prepend(list_node_t *nodep, list_t *listp) {
-   nodep->tail = listp->front;
-   listp->front = nodep;
-}
-*/
-
 
 void list_insert(list_node_t *nodep, list_t *listp) {
    if (nodep > listp->back) {
@@ -59,6 +51,25 @@ void list_insert(list_node_t *nodep, list_t *listp) {
    }
 }
 
+
+void list_merge(list_node_t *firstp, list_node_t *secondp, list_t *listp) {
+   list_node_t *thirdp = (list_node_t *) ((char *) secondp + secondp->size + sizeof(list_node_t));
+
+   if (DEBUG) {
+      assert (firstp->free && secondp->free);
+   }
+
+   /* update list back pointer if end of list; update prevp of next block
+    * otherwise */
+   if (secondp == listp->back) {
+      listp->back = firstp;
+   } else {
+      thirdp->prevp = firstp;
+   }
+
+   /* update size of merged block */
+   firstp->size += secondp->size + sizeof(list_node_t);
+}
 
 void list_print(list_t *listp) {
    list_node_t *list_it;
@@ -76,17 +87,18 @@ void list_print(list_t *listp) {
           list_it->free ? COLOR_GREEN : COLOR_RED,
           (void *) list_it, list_it->size);
    ++i;
-   do {
-      list_it = (list_node_t *) ((char *) list_it + list_it->size + sizeof(list_node_t));
-      eprintf("%s%p: %-10zu"COLOR_RESET"  ->  ",
-             list_it->free ? COLOR_GREEN : COLOR_RED,
-             (void *) list_it, list_it->size);
-      if (i % 3 == 0) {
-         LOG("\n");
-      }
-      ++i;
-   } while (list_it != listp->back);
-
+   if (list_it != listp->back) {
+      do {
+         list_it = (list_node_t *) ((char *) list_it + list_it->size + sizeof(list_node_t));
+         eprintf("%s%p: %-10zu"COLOR_RESET"  ->  ",
+                 list_it->free ? COLOR_GREEN : COLOR_RED,
+                 (void *) list_it, list_it->size);
+         if (i % 3 == 0) {
+            LOG("\n");
+         }
+         ++i;
+      } while (list_it != listp->back);
+   }
    LOG(COLOR_RESET"\n");
 }
 
@@ -131,19 +143,21 @@ const list_node_t *list_validate(const list_t *listp) {
       return list_it;
    }
    prevp = list_it;
-   do {
-      list_it = (list_node_t *) ((char *) list_it + list_it->size + sizeof(list_node_t));
-      if (prevp != list_it->prevp) {
-         list_errno_ = LIST_E_PREV;
-         return list_it;
-      }
-      if (list_it->size == 0) {
-         list_errno_ = LIST_E_SIZE;
-         return list_it;
-      }
-      prevp = list_it;
-   } while (list_it != back);
-
+   if (list_it != back) {
+      do {
+         list_it = (list_node_t *) ((char *) list_it + list_it->size + sizeof(list_node_t));
+         if (prevp != list_it->prevp) {
+            list_errno_ = LIST_E_PREV;
+            return list_it;
+         }
+         if (list_it->size == 0) {
+            list_errno_ = LIST_E_SIZE;
+            return list_it;
+         }
+         prevp = list_it;
+      } while (list_it != back);
+   }
+   
    return NULL;
 }
 
