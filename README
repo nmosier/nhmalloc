@@ -69,6 +69,21 @@ command-line arguments. Here's the usage:
 Note that all command-line arguments are optional (there are presets in the program).
 
 
+KNOWN BUGS:
+* my-malloc is incompatible with some programs for an as-yet undetermined reason. I suspect
+  that the root cause may be that these programs are calling other functions that directly
+  mess with the heap. For example:
+       - gdb calls sysmalloc(), which changes (increases) the program break address. This
+         breaks an important invariant (on which makes the memblock list structure depends).
+         gdb then crashes.
+       - gcc exits with a segfault.
+       - "ls -l /home" crashes every time, but ls has never crashed when not in long mode.
+         This makes me suspect that the underlying CRT calls such as getpwuid() perhaps
+         call some other function akin to sysmalloc() that gets its grubby hands on
+         my-malloc's heap. Furthermore, this only happens with important directories
+         such as /home, /dev, and /bin. "ls /usr/include -l" works fine.
+
+
 FUTURE WORK:
 * the last 3 fields of the header for each memory block are not used when the block is
   allocated -- my-malloc should utilize this by returning pointers beginning at these
