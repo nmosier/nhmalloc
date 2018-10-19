@@ -88,10 +88,7 @@ FUTURE WORK:
 * the last 3 fields of the header for each memory block are not used when the block is
   allocated -- my-malloc should utilize this by returning pointers beginning at these
   inactive fields (and appropriately increase the memblock sizes, of course)
-* balancing of free tree: one possible heuristic would be to calculate how close the
-  root is to some experimentally-determined weighted center of the heap (this works
-  because all memblocks are contiguous; furthermore, it can't be the regular center
-  since smaller blocks are stored on one side of the tree, but they take up less space)
+* balancing of free tree
 * improve realloc: try to merge allocated memblock with adjacent memblocks if they
   are free and, combined, the new block satisfies the size request. Otherwise,
   find brand new block in free tree and copy there.
