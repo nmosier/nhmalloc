@@ -111,7 +111,8 @@ void list_print(list_t *listp) {
 typedef enum list_e_t_ {
    LIST_E_SUCCESS,
    LIST_E_PREV,
-   LIST_E_SIZE
+   LIST_E_SIZE,
+   LIST_E_FREE
 } list_e_t;
 
 static list_e_t list_errno_;
@@ -122,19 +123,20 @@ static list_e_t list_errno_;
              (ii)  there is at least 1 byte of space between consecutive nodes
              (iii) there are no memory gaps between a memory block & the following
                    node
+             (iv)  there are no adjacent free memblocks
  * RETVAL: returns pointer to first node that violates above conditions; if list is
  *         valid, returns NULL
  */
 const list_node_t *list_validate(const list_t *listp) {
    const list_node_t *list_it, *back, *prevp;
-
+   
    list_errno_ = LIST_E_SUCCESS;
    
    /* prime the loop */
    back = listp->back;
    list_it = listp->front;
    prevp = NULL;
-
+   
    if (list_it == NULL) {
       return NULL;
    }
@@ -158,6 +160,10 @@ const list_node_t *list_validate(const list_t *listp) {
             list_errno_ = LIST_E_SIZE;
             return list_it;
          }
+         if (list_it->free && prevp->free) {
+            list_errno_ = LIST_E_FREE;
+            return list_it;
+         }
          prevp = list_it;
       } while (list_it != back);
    }
@@ -174,6 +180,7 @@ const char *list_strerror(int errno) {
    case LIST_E_SUCCESS: return "Success";
    case LIST_E_PREV:    return "Previous node mismatch";
    case LIST_E_SIZE:    return "Block is of size 0";
+   case LIST_E_FREE:    return "Adjacent free nodes";
    default:             return "Unknown error";
    }
 }
