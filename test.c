@@ -109,28 +109,64 @@ int main(int argc, char *argv[]) {
    /* MAIN TEST LOOP */
    for (int op = 0; op < nops; ++op) {
       int index = random() % nptrs;
+      size_t size = random() % maxsize;
+      int mode = random() % 2;
+      
       if (ptrs[index].ptr) {
-         /* validate memory contents then free */
-         if (validate(&ptrs[index])) {
-            ++nsuccess;
-         } else {
+         /* validate memory contents */
+         if (!validate(&ptrs[index])) {
             eprintf("test: memory validation failed for index %d (%p)\n", index, (void *) &ptrs[index]);
             ++nfail;
+         } else {
+            ++nsuccess;
          }
-         free(ptrs[index].ptr);
 
-         mirrored_ptr_t ptr = {0};
-         ptrs[index] = ptr;
+         /* choose between freeing and realloc'ing ptr */
+         if (mode == 0) {
+            /* free pointer */
+            free(ptrs[index].ptr);
+            mirrored_ptr_t ptr = {0};
+            ptrs[index] = ptr;
+         } else {
+            /* reallocate memory */
+            ptrs[index].ptr = realloc(ptrs[index].ptr, size);
+
+            /* validate realloc'ed mem */
+            if (size < ptrs[index].size) {
+               ptrs[index].size = size;
+            }
+            if (!validate(&ptrs[index])) {
+               eprintf("test: memory validation failed for index %d (%p)\n",
+                       index, (void *) &ptrs[index]);
+               ++nfail;
+            } else {
+               ++nsuccess;
+            }
+
+            ptrs[index].size = size;
+            read_mirror(&ptrs[index], urand_fd);
+         }
+
       } else {
-         int size;
-
          /* allocate random size */
-         size = random() % maxsize;
          ptrs[index].size = size;
-         ptrs[index].ptr = (char *) malloc(size);
+
+         if (mode == 0) {
+            /* mallocate */
+            ptrs[index].ptr = (char *) malloc(size);
+         } else {
+            /* callocate */
+            ptrs[index].ptr = (char *) calloc(size, 1);
+            for (char *it = ptrs[index].ptr; it != ptrs[index].ptr + size; ++it) {
+               if (*it) {
+                  LOG("test: non-null byte in memory allocated by calloc\n");
+                  exit(3);
+               }
+            }
+         }
          
          if (ptrs[index].ptr == NULL && ptrs[index].size > 0) {
-            perror("test: null ptr returned by malloc");
+            LOG("test: null ptr returned by malloc/calloc");
             exit(1);
          }
 
