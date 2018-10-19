@@ -27,7 +27,6 @@ typedef struct memblocks_t_ {
    memblock_t *root;
 } memblocks_t;
 
-
 // memblocks operations
 void memblocks_init(memblocks_t *memblocks);
 
