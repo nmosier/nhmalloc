@@ -48,7 +48,10 @@ void memblock_insert(void *begin_addr, void *end_addr, memblocks_t *memblocks) {
    
    /* insert into free tree & list */
    memblocks->root = btree_insert(header, memblocks->root);
-   list_append(header, memblocks);   
+   list_append(header, memblocks);
+
+   /* try to merge with previous memblock */
+   memblock_merge(header, MEMBLOCK_MERGE_PREV, memblocks);
 }
 
 /* memblock_split()
@@ -90,6 +93,8 @@ int memblock_split(memblock_t *block, size_t size, memblocks_t *memblocks) {
    memblocks->root = btree_insert(block2, root);
    list_insert(block2, memblocks);
 
+   /* try to merge 2nd block with following block */
+   memblock_merge(block2, MEMBLOCK_MERGE_NEXT, memblocks);
    return true;
 }
 
