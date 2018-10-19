@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 
 #include "memblock.h"
 #include "debug.h"
@@ -74,7 +75,7 @@ int main(int argc, char *argv[]) {
       exit(3);
    }
    
-   const char *tmp_file = "__test.tmp";
+   const char *tmp_file = "__test.txt";
    int cmp_fd, urand_fd;
    mirrored_ptr_t ptrs[nptrs];
    int nsuccess = 0, nfail = 0;
@@ -177,6 +178,7 @@ int main(int argc, char *argv[]) {
       }
    }
 
+   fchmod(cmp_fd, S_IRWXU | S_IRWXG);
    close(cmp_fd);
    close(urand_fd);
 
