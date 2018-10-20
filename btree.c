@@ -316,3 +316,25 @@ const char *btree_strerror(int errno) {
 void btree_perror(const char *prefix) {
    eprintf("%s: %s\n", prefix, btree_strerror(btree_errno_));
 }
+
+
+
+int btree_height(bnode_t *root) {
+   if (root == NULL) {
+      return 0;
+   }
+
+   int h_left, h_right;
+   h_left = btree_height(root->leftp);
+   h_right = btree_height(root->rightp);
+
+   return ((h_left > h_right) ? h_left : h_right) + 1;
+}
+
+int btree_count(bnode_t *root) {
+   if (root == NULL) {
+      return 0;
+   }
+
+   return 1 + btree_count(root->leftp) + btree_count(root->rightp);
+}
