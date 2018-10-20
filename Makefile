@@ -13,4 +13,8 @@ test: test.o btree.o list.o memblock.o my-malloc.so
 
 .PHONY: clean
 clean:
-	rm -f *.o *.so mymalloc 
+	rm -f *.o *.so test
+
+.PHONY: debug
+debug: test
+	gdb --args env LD_PRELOAD=./my-malloc.so ./test
