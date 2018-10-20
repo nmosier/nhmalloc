@@ -7,17 +7,15 @@
 #include <assert.h>
 
 #include "memblock.h"
+#include "btree.h"
 #include "debug.h"
 #include "signal.h"
 
 static intptr_t BREAK_INCREMENT = 0x1000;
 static void *PROGRAM_BREAK_ADDR = NULL;
-memblocks_t memblocks;
+static memblocks_t memblocks;
 
 void *malloc(size_t size) {
-   /* TEMPORARY: try 8-byte alignment */
-   //         eprintf("%zu\n", size);
-
    memblock_t *memblock_header;
    void *memblock;
 
@@ -53,13 +51,6 @@ void *malloc(size_t size) {
             return NULL;
          }
 
-         //         if (old_break != PROGRAM_BREAK_ADDR) {
-            /* another program sneakily moved the program break,
-             * so insert this useless chunk into the list */
-         // memblock_insert(PROGRAM_BREAK_ADDR, old_break, &memblocks);
-         // memblock_allocate((memblock_t *) PROGRAM_BREAK_ADDR + 1, &memblocks);
-         //         }
-         
          if (DEBUG) {
             assert (old_break == PROGRAM_BREAK_ADDR);
          }
@@ -89,10 +80,10 @@ void *malloc(size_t size) {
       memset(memblock, 0, size); // make sure its writable
    }
 
-   //   eprintf("%p\n", (void *) memblock);
    return memblock;
 }
 
+static int btree_maxheight_left = 0, btree_maxheight_right = 0, btree_maxcount = 0;
 void free(void *ptr) {
    if (DEBUG && ptr) {
       memblock_t *header = (memblock_t *) ptr - 1;
@@ -109,6 +100,22 @@ void free(void *ptr) {
          LOG("free: program exiting due to internal malloc error.\n");
          exit(1);
       }
+   }
+
+   if (DEBUG && memblocks.root) {
+      int height;
+      
+      height = btree_height(memblocks.root->leftp);
+      if (height > btree_maxheight_left) {
+         btree_maxheight_left = height;
+      }
+      height = btree_height(memblocks.root->rightp);
+      if (height > btree_maxheight_right) {
+         btree_maxheight_right = height;
+      }
+
+      int count = btree_count(memblocks.root);
+      if (count > btree_maxcount) { btree_maxcount = count; }
    }
 }
 
@@ -137,14 +144,6 @@ void *realloc(void *ptr, size_t size) {
          old_memblock = (memblock_t *) ptr - 1;
          old_size = old_memblock->size;
 
-         /*
-         new_ptr = memblock_merge(old_memblock, MEMBLOCK_MERGE_NEXTP, &memblocks);
-         if (new_ptr == NULL) {
-            new_ptr = memblock_merge(old_memblock, MEMBLOCK_MERGE_PREVP, &memblocks);
-            }
-         if (new_ptr == NULL) {
-            new_ptr = malloc(size);
-            } */
          new_ptr = malloc(size);
          cpy_size = (old_size < size) ? old_size : size;
          memcpy(new_ptr, ptr, cpy_size);
