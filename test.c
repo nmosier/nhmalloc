@@ -5,8 +5,8 @@
 #include <time.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <stdbool.h>
 
-#include "memblock.h"
 #include "debug.h"
 
 
@@ -36,6 +36,8 @@ int main(int argc, char *argv[]) {
    unsigned int seed = SEED;
    size_t maxsize = MAXSIZE;
 
+
+   
    while ((opt = getopt(argc, argv, optstring)) >= 0) {
       switch (opt) {
       case 'p':
