@@ -19,4 +19,7 @@ const bnode_t *btree_validate(const btree_t tree);
 int btree_errno();
 const char *btree_strerror(int errno);
 void btree_perror(const char *prefix);
+int btree_height(bnode_t *root);
+int btree_count(bnode_t *root);
+
 #endif
