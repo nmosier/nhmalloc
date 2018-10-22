@@ -18,3 +18,7 @@ clean:
 .PHONY: debug
 debug: test
 	gdb --args env LD_PRELOAD=./my-malloc.so ./test
+
+.PHONY: run
+run: test
+	./tests.sh
