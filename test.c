@@ -25,7 +25,7 @@ typedef struct {
 
 
 bool validate(mirrored_ptr_t *mirptr);
-void read_mirror(mirrored_ptr_t *dst, int src_fd);
+int read_mirror(mirrored_ptr_t *dst, int src_fd);
 
 int main(int argc, char *argv[]) {
    /* get command line options */
@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
    // if not null, then free, compare mem, then write
 
    /* open comparison file */
-   if ((cmp_fd = open(tmp_file, O_CREAT | O_TRUNC | O_RDWR)) < 0) {
+   if ((cmp_fd = open(tmp_file, O_CREAT|O_TRUNC|O_RDWR, S_IRUSR|S_IWUSR)) < 0) {
       char sbuf[1000];
       sprintf(sbuf, "open: %s", tmp_file);
       perror(sbuf);
@@ -147,9 +147,16 @@ int main(int argc, char *argv[]) {
             }
 
             ptrs[index].size = size;
-            read_mirror(&ptrs[index], urand_fd);
-         }
+            if (read_mirror(&ptrs[index], urand_fd) < 0) {
+               /* read_mirror internal error */
+               perror("read_mirror");
 
+               /* clean up and exit */
+               close(cmp_fd);
+               close(urand_fd);
+               exit(2);
+            }
+         }
       } else {
          /* allocate random size */
          ptrs[index].size = size;
@@ -163,35 +170,43 @@ int main(int argc, char *argv[]) {
             for (char *it = ptrs[index].ptr; it != ptrs[index].ptr + size; ++it) {
                if (*it) {
                   LOG("test: non-null byte in memory allocated by calloc\n");
-                  exit(3);
+                  break;
                }
             }
          }
          
          if (ptrs[index].ptr == NULL && ptrs[index].size > 0) {
             LOG("test: null ptr returned by malloc/calloc");
-            exit(1);
          }
 
          ptrs[index].filedes = cmp_fd;
          
          /* copy random bytes to pointer mem location */
-         read_mirror(&ptrs[index], urand_fd);
+         if (read_mirror(&ptrs[index], urand_fd) < 0) {
+            /* read_mirror internal error */
+            perror("read_mirror");
+
+            /* clean up and exit */
+            close(cmp_fd);
+            close(urand_fd);
+            exit(2);
+         }
       }
    }
 
-   fchmod(cmp_fd, S_IRWXU | S_IRWXG);
-   close(cmp_fd);
-   close(urand_fd);
-
+   //   fchmod(cmp_fd, S_IRWXU | S_IRWXG);
+   
    LOG("test results:\n");
    eprintf(" - successes:\t%d\n - failures:\t%d\n", nsuccess, nfail);
 
+   close(cmp_fd);
+   close(urand_fd);
+   
    exit(0);
 
 }
 
-void read_mirror(mirrored_ptr_t *dst, int src_fd) {
+int read_mirror(mirrored_ptr_t *dst, int src_fd) {
    size_t size = dst->size;
    char *dst_ptr = dst->ptr;
    int dst_fd = dst->filedes;
@@ -216,11 +231,12 @@ void read_mirror(mirrored_ptr_t *dst, int src_fd) {
    do {
       ssize_t bytes_written;
       if ((bytes_written = write(dst_fd, buf_it, (size_t) (size - (buf_it - buf)))) < 0) {
-         perror("write");
-         exit(3);
+         return -1;
       }
       buf_it += bytes_written;
-   } while (buf_it != buf + size);   
+   } while (buf_it != buf + size);
+
+   return 0;
 }
 
 bool validate(mirrored_ptr_t *mirptr) {
