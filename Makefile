@@ -19,6 +19,10 @@ clean:
 debug: test
 	gdb --args env LD_PRELOAD=./my-malloc.so ./test
 
-.PHONY: run
+.PHONY: tests
 run: test
 	./tests.sh
+
+.PHONY: ls
+ls: my-malloc.so
+	LD_PRELOAD=./my-malloc.so ls -l -R ~
