@@ -20,7 +20,7 @@ debug: test
 	gdb --args env LD_PRELOAD=./my-malloc.so ./test
 
 .PHONY: tests
-run: test
+tests: test
 	./tests.sh
 
 .PHONY: ls
