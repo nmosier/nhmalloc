@@ -68,6 +68,9 @@ command-line arguments. Here's the usage:
               -s: seed for pseudorandom number generator used for randomizing test
 Note that all command-line arguments are optional (there are presets in the program).
 
+Update: I added a new 'make' target called 'ls' -- the command 'make ls' runs the following:
+        LD_PRELOAD=./my-malloc.so ls -l -R ~
+It recursively lists all files in the user's directory.
 
 KNOWN BUGS:
 * my-malloc is incompatible with some programs for an as-yet undetermined reason. I suspect
