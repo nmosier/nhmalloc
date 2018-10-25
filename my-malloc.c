@@ -9,7 +9,6 @@
 #include "memblock.h"
 #include "btree.h"
 #include "debug.h"
-#include "signal.h"
 
 static intptr_t BREAK_INCREMENT = 0x1000;
 static void *PROGRAM_BREAK_ADDR = NULL;
