@@ -140,9 +140,15 @@ void *realloc(void *ptr, size_t size) {
 
    if (ptr) {
       if (size) {
+         /* get previous and next memblocks */
          old_memblock = (memblock_t *) ptr - 1;
          old_size = old_memblock->size;
 
+         
+         /* check for any adjacent free blocks */
+
+         
+         
          new_ptr = malloc(size);
          cpy_size = (old_size < size) ? old_size : size;
          memcpy(new_ptr, ptr, cpy_size);
