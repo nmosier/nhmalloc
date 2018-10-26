@@ -142,12 +142,15 @@ int main(int argc, char *argv[]) {
                eprintf("test: memory validation failed for index %d (%p)\n",
                        index, (void *) &ptrs[index]);
                ++nfail;
+            } else if (size > 0 && ptrs[index].ptr == NULL) {
+               perror("realloc");
+               ++nfail;
             } else {
                ++nsuccess;
             }
 
             ptrs[index].size = size;
-            if (read_mirror(&ptrs[index], urand_fd) < 0) {
+            if (ptrs[index].ptr && read_mirror(&ptrs[index], urand_fd) < 0) {
                /* read_mirror internal error */
                perror("read_mirror");
 
@@ -175,7 +178,7 @@ int main(int argc, char *argv[]) {
             }
          }
          
-         if (ptrs[index].ptr == NULL && ptrs[index].size > 0) {
+         if (ptrs[index].ptr == NULL && ptrs[index].size) {
             LOG("test: null ptr returned by malloc/calloc");
          }
 
@@ -194,8 +197,6 @@ int main(int argc, char *argv[]) {
       }
    }
 
-   //   fchmod(cmp_fd, S_IRWXU | S_IRWXG);
-   
    LOG("test results:\n");
    eprintf(" - successes:\t%d\n - failures:\t%d\n", nsuccess, nfail);
 
