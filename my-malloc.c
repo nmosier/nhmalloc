@@ -1,4 +1,4 @@
-//Wriiten by Nick Mosier and Searidang Pa
+//Wriiten by Nick Mosier
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,11 +8,12 @@
 
 #include "memblock.h"
 #include "btree.h"
+#include "list.h"
 #include "debug.h"
 
-static intptr_t BREAK_INCREMENT = 0x1000;
-static void *PROGRAM_BREAK_ADDR = NULL;
-static memblocks_t memblocks;
+//static intptr_t BREAK_INCREMENT = 0x1000;
+//static void *PROGRAM_BREAK_ADDR = NULL;
+static memblocks_t memblocks = {0};
 
 void *malloc(size_t size) {
    memblock_t *memblock_header;
@@ -24,9 +25,9 @@ void *malloc(size_t size) {
    }
 
    /* initialize globals if necessary */
-   if (PROGRAM_BREAK_ADDR == NULL) {
+   if (memblocks.break_addr == NULL) {
       /* intialize mymalloc globals */
-      PROGRAM_BREAK_ADDR = sbrk(0);
+      memblocks.break_addr = sbrk(0);
       memblocks_init(&memblocks);
    }
 
@@ -42,7 +43,7 @@ void *malloc(size_t size) {
          /* failed to find sufficiently sized memblock,
           * so reserve more */
          void *old_break, *new_break;
-         old_break = sbrk(BREAK_INCREMENT);
+         old_break = sbrk(memblocks.break_inc);
 
 
          if (old_break == (void *) -1) {
@@ -51,14 +52,14 @@ void *malloc(size_t size) {
          }
 
          if (DEBUG) {
-            assert (old_break == PROGRAM_BREAK_ADDR);
+            assert (old_break == memblocks.break_addr);
          }
          
-         new_break = (void *) ((char *) old_break + BREAK_INCREMENT);
+         new_break = (void *) ((char *) old_break + memblocks.break_inc);
          memblock_insert(old_break, new_break, &memblocks);
 
-         PROGRAM_BREAK_ADDR = new_break;
-         BREAK_INCREMENT *= 2; // double size for next call to sbrk
+         memblocks.break_addr = new_break;
+         memblocks.break_inc *= 2; // double size for next call to sbrk
       }
    } while (memblock_header == NULL);
 
@@ -133,26 +134,66 @@ void *calloc(size_t nmemb, size_t size) {
 }
 
 void *realloc(void *ptr, size_t size) {
-   // IMPROVEMENT: look to see if there's contiguous memory after this
    void *new_ptr;
-   memblock_t *old_memblock;
+   memblock_t *old_memblock, *prev_memblock, *next_memblock, *merged_memblock, *free_memblock;
    size_t old_size, cpy_size;
-
+   
    if (ptr) {
       if (size) {
-         /* get previous and next memblocks */
+         /* get previous, old, and next memblocks */
          old_memblock = (memblock_t *) ptr - 1;
          old_size = old_memblock->size;
-
-         
-         /* check for any adjacent free blocks */
-
-         
-         
-         new_ptr = malloc(size);
+         prev_memblock = old_memblock->prevp;
+         next_memblock = (ptr < (void *) (memblocks.back + 1)) ? (memblock_t *) ((char *) ptr + old_size) : NULL;
          cpy_size = (old_size < size) ? old_size : size;
-         memcpy(new_ptr, ptr, cpy_size);
-         free(ptr);
+
+
+
+         /* check for any adjacent free blocks:
+          * 1. check next_memblock first to avoid a copy
+          * 2. check prev_memblock second to avoid fragmentation
+          * 3. otherwise, alloc new block
+          */
+         free_memblock = NULL;
+         merged_memblock = old_memblock;
+         if (merged_memblock->size < size && next_memblock) {
+            merged_memblock = memblock_merge(merged_memblock, MEMBLOCK_MERGE_NEXT, &memblocks);
+
+            if (DEBUG) {
+               memblocks_validate(&memblocks);
+            }
+         }
+         if (merged_memblock->size < size && prev_memblock) {
+            merged_memblock = memblock_merge(merged_memblock, MEMBLOCK_MERGE_PREV, &memblocks);
+
+            if (DEBUG) {
+               memblocks_validate(&memblocks);
+            }
+         }
+         if (merged_memblock->size < size) {
+            /* allocate new pointer */
+            free_memblock = merged_memblock; // save old memblock to free later
+            merged_memblock = ((memblock_t *) malloc(size)) - 1;
+         }
+
+         new_ptr = (void *) (merged_memblock + 1);
+         if (merged_memblock != old_memblock) {
+            /* copy old contents to new memblock */
+            memcpy(new_ptr, ptr, cpy_size);
+         }
+
+         if (free_memblock) {
+            /* free merged_memblock */
+            free((void *) (free_memblock + 1));
+         }
+
+         /* split off any extra space */
+         memblock_split(merged_memblock, size, &memblocks);
+         
+         if (DEBUG) {
+            memblocks_validate(&memblocks);
+         }
+         
          return new_ptr;
       } else {
          /* size = 0, same as free */
