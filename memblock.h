@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 typedef struct memblock_t_ {
    /* basic fields */
@@ -25,7 +26,13 @@ typedef struct memblocks_t_ {
 
    /* btree fields */
    memblock_t *root;
+
+   /* heap fields */
+   intptr_t break_inc;
+   void *break_addr;
 } memblocks_t;
+#define INIT_PROGRAM_BREAK_INCREMENT 0x1000
+
 
 // memblocks operations
 void memblocks_init(memblocks_t *memblocks);
