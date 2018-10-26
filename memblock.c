@@ -6,6 +6,7 @@
 #include "assert.h"
 #include "debug.h"
 
+
 /* memblocks_init()
  * DESC: initialize empty memblocks structure
  * PARAMS:
@@ -13,7 +14,7 @@
  */
 void memblocks_init(memblocks_t *memblocks) {
    memblocks->root = memblocks->front = memblocks->back = NULL;
-   return;
+   memblocks->break_inc = INIT_PROGRAM_BREAK_INCREMENT;
 }
 
 /* memblocks_find()
@@ -67,7 +68,7 @@ void memblock_insert(void *begin_addr, void *end_addr, memblocks_t *memblocks) {
  *  - assumes that block is free (why else would it be split?)
  */
 int memblock_split(memblock_t *block, size_t size, memblocks_t *memblocks) {
-   memblock_t *block2, *root;
+   memblock_t *block2;
    size_t total_size = block->size;
    size_t remaining_size;
 
@@ -83,14 +84,18 @@ int memblock_split(memblock_t *block, size_t size, memblocks_t *memblocks) {
 
    /* initialize new block */
    block2->size = remaining_size;
-   block2->free = true; // assume free
+   block2->free = true;
 
-   /* remove original block from tree */
-   memblocks->root = btree_remove(block, memblocks->root);
+   /* remove original block from tree (if free) */
+   if (block->free) {
+      memblocks->root = btree_remove(block, memblocks->root);
+   }
    
    /* insert new blocks/block into tree/list */
-   root = btree_insert(block, memblocks->root);
-   memblocks->root = btree_insert(block2, root);
+   if (block->free) {
+      memblocks->root = btree_insert(block, memblocks->root);
+   }
+   memblocks->root = btree_insert(block2, memblocks->root);
    list_insert(block2, memblocks);
 
    /* try to merge 2nd block with following block */
