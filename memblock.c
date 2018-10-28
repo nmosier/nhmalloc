@@ -247,3 +247,31 @@ bool memblocks_validate(memblocks_t *memblocks) {
    
    return true;
 }
+
+
+/* conversion between raw pointers and memblocks */
+memblock_t *ptr2memblock(void *ptr) {
+   return (memblock_t *) ptr - 1;
+}
+
+void *memblock2ptr(memblock_t *block) {
+   return (void *) (block + 1);
+}
+
+/* memblock_next()
+ * DESC: gets next memblock in list in memblocks structure
+ * PARAMS:
+ *  - block: the memblock whose following memblock should be returned
+ *  - memblocks: pointer to memblocks structure
+ * RETVAL: returns next block if _block_ is not end of list; otherwise
+ *         returns null
+ */
+memblock_t *memblock_next(memblock_t *block, memblocks_t *memblocks) {
+   memblock_t *next_block = (memblock_t *) ((char *) memblock2ptr(block) + block->size);
+   return (next_block <= memblocks->back) ? next_block : NULL;
+}
+
+/* included for symmetry */
+memblock_t *memblock_prev(memblock_t *block, memblocks_t *memblocks) {
+   return block->prevp;
+}
