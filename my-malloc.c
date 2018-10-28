@@ -17,7 +17,7 @@ static memblocks_t memblocks = {0};
 
 void *malloc(size_t size) {
    memblock_t *memblock_header;
-   void *memblock;
+   void *new_ptr;
 
    /* check size is nonzero */
    if (size == 0) {
@@ -69,24 +69,24 @@ void *malloc(size_t size) {
    
    memblock_split(memblock_header, size, &memblocks);
    
-   memblock = (void *) (memblock_header + 1);
-   memblock_allocate(memblock, &memblocks);
+   new_ptr = memblock2ptr(memblock_header);
+   memblock_allocate(new_ptr, &memblocks);
 
    if (DEBUG) {
       if (!memblocks_validate(&memblocks)) {
          LOG("malloc: program exiting due to internal error.\n");
          exit(1);
       }
-      memset(memblock, 0, size); // make sure its writable
+      memset(new_ptr, 0, size); // make sure its writable
    }
 
-   return memblock;
+   return new_ptr;
 }
 
 static int btree_maxheight_left = 0, btree_maxheight_right = 0, btree_maxcount = 0;
 void free(void *ptr) {
    if (DEBUG && ptr) {
-      memblock_t *header = (memblock_t *) ptr - 1;
+      memblock_t *header = ptr2memblock(ptr);
       size_t size = header->size;
       memset(ptr, 0, size);
    }
@@ -141,13 +141,11 @@ void *realloc(void *ptr, size_t size) {
    if (ptr) {
       if (size) {
          /* get previous, old, and next memblocks */
-         old_memblock = (memblock_t *) ptr - 1;
+         old_memblock = ptr2memblock(ptr);
          old_size = old_memblock->size;
-         prev_memblock = old_memblock->prevp;
-         next_memblock = (ptr < (void *) (memblocks.back + 1)) ? (memblock_t *) ((char *) ptr + old_size) : NULL;
+         prev_memblock = memblock_prev(old_memblock, &memblocks);
+         next_memblock = memblock_next(old_memblock, &memblocks);
          cpy_size = (old_size < size) ? old_size : size;
-
-
 
          /* check for any adjacent free blocks:
           * 1. check next_memblock first to avoid a copy
@@ -173,10 +171,16 @@ void *realloc(void *ptr, size_t size) {
          if (merged_memblock->size < size) {
             /* allocate new pointer */
             free_memblock = merged_memblock; // save old memblock to free later
-            merged_memblock = ((memblock_t *) malloc(size)) - 1;
+            new_ptr = malloc(size);
+            if (new_ptr == NULL) {
+               /* handle malloc error */
+               return NULL;
+            }
+            
+            merged_memblock = ptr2memblock(new_ptr);
          }
 
-         new_ptr = (void *) (merged_memblock + 1);
+         new_ptr = memblock2ptr(merged_memblock);
          if (merged_memblock != old_memblock) {
             /* copy old contents to new memblock */
             memcpy(new_ptr, ptr, cpy_size);
@@ -184,7 +188,7 @@ void *realloc(void *ptr, size_t size) {
 
          if (free_memblock) {
             /* free merged_memblock */
-            free((void *) (free_memblock + 1));
+            free(memblock2ptr(free_memblock));
          }
 
          /* split off any extra space */
