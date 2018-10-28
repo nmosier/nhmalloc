@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#define DEBUG 0
+#define DEBUG 1
 
 #define COLOR_RED   "\x1b[31m"
 #define COLOR_GREEN "\x1b[32m"
