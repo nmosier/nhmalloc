@@ -8,8 +8,8 @@ my-malloc.so: my-malloc.o memblock.o btree.o list.o
 test: test.o btree.o list.o memblock.o my-malloc.so
 	gcc -o $@ test.o btree.o list.o memblock.o
 
-%.o: %.c
-	gcc $(CFLAGS) $(OFLAGS) -c -o $@ $^
+%.o: %.c debug.h
+	gcc $(CFLAGS) $(OFLAGS) -c -o $@ $*.c
 
 .PHONY: clean
 clean:
