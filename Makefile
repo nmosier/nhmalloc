@@ -1,5 +1,5 @@
 CFLAGS=-Wall -pedantic -g
-OFLAGS= -r -fPIC
+OFLAGS=-r -fPIC
 SHLIBFLAGS=-rdynamic -shared -fPIC
 
 my-malloc.so: my-malloc.o memblock.o btree.o list.o
