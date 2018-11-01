@@ -2,17 +2,17 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>
 
+#include "my-malloc.h"
 #include "memblock.h"
 #include "btree.h"
 #include "list.h"
 #include "debug.h"
 
-//static intptr_t BREAK_INCREMENT = 0x1000;
-//static void *PROGRAM_BREAK_ADDR = NULL;
 static memblocks_t memblocks = {0};
 
 void *malloc(size_t size) {
@@ -37,12 +37,12 @@ void *malloc(size_t size) {
       
       if (memblock_header == NULL) {
          if (DEBUG) {
-            LOG("mymalloc: expanding the heap...\n");
+            LOG("my-malloc: expanding the heap...\n");
          }
 
          /* failed to find sufficiently sized memblock,
           * so reserve more */
-         void *old_break, *new_break;
+         void *old_break, *new_break;//, *old_break_aligned, *new_break_aligned;
          old_break = sbrk(memblocks.break_inc);
 
 
@@ -56,10 +56,11 @@ void *malloc(size_t size) {
          }
          
          new_break = (void *) ((char *) old_break + memblocks.break_inc);
-         memblock_insert(old_break, new_break, &memblocks);
 
          memblocks.break_addr = new_break;
          memblocks.break_inc *= 2; // double size for next call to sbrk
+
+         memblock_insert(old_break, new_break, &memblocks);
       }
    } while (memblock_header == NULL);
 
@@ -73,11 +74,17 @@ void *malloc(size_t size) {
    memblock_allocate(new_ptr, &memblocks);
 
    if (DEBUG) {
-      if (!memblocks_validate(&memblocks)) {
-         LOG("malloc: program exiting due to internal error.\n");
-         exit(1);
-      }
+      memblocks_validate(&memblocks);
+         //         LOG("malloc: program exiting due to internal error.\n");
+         //exit(1);
+         //      }
       memset(new_ptr, 0, size); // make sure its writable
+
+      /* make sure properly aligned */
+      if (!MALLOC_ALIGN_VALIDATE(new_ptr)) {
+         eprintf("my-malloc: internal error: pointer not %d-byte aligned: %p\n",
+                 MALLOC_ALIGN, (void *) new_ptr);
+      }
    }
 
    return new_ptr;
