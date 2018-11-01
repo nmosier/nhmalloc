@@ -1,6 +1,8 @@
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "memblock.h"
+#include "my-malloc.h"
 #include "btree.h"
 #include "list.h"
 #include "assert.h"
@@ -26,7 +28,7 @@ void memblocks_init(memblocks_t *memblocks) {
  */
 memblock_t *memblock_find(size_t size, memblocks_t *memblocks) {
    /* find minimum sized node greater than or equal to _size_ */
-   return btree_minlwrbnd(size, memblocks->root);
+   return btree_minlwrbnd(MALLOC_ALIGN_SIZE(size), memblocks->root);
 }
 
 /* memblocks_insert()
@@ -41,6 +43,10 @@ memblock_t *memblock_find(size_t size, memblocks_t *memblocks) {
 void memblock_insert(void *begin_addr, void *end_addr, memblocks_t *memblocks) {
    memblock_t *header;
 
+   /* align begin & end addresses */
+   begin_addr = MALLOC_ALIGN_PTR(begin_addr);
+   end_addr = MALLOC_ALIGN_PTR(end_addr);
+   
    /* initialize memblock at begin_addr */
    header = (memblock_t *) begin_addr;
    header->size = (char *) end_addr - (char *)  memblock2ptr(header);
@@ -71,6 +77,9 @@ int memblock_split(memblock_t *block, size_t size, memblocks_t *memblocks) {
    size_t total_size = block->size;
    size_t remaining_size;
 
+   /* align size */
+   size = MALLOC_ALIGN_SIZE(size);
+   
    /* check if there's enough space for 2nd block */
    if (total_size <= size + MEMBLOCK_RESERVED_SIZE) {
       return false;
