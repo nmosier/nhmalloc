@@ -161,12 +161,11 @@ list_node_t *list_validate(list_t *listp) {
          }
 
          /* check alignment */
-         /* NOT NOW, THOUGH
-         if ((uint64_t) list_it & ~MALLOC_ALIGNMENT_MASK) {
+         if (!MALLOC_ALIGN_VALIDATE(list_it)) {
             list_errno_ = LIST_E_ALIGN;
             return list_it;
          }
-         */
+
          prevp = list_it;
       } while (list_it != back);
    }
