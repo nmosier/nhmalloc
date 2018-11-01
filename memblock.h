@@ -18,7 +18,8 @@ typedef struct memblock_t_ {
    struct memblock_t_ *rightp;
    struct memblock_t_ *parentp;
 } memblock_t;
-#define MEMBLOCK_RESERVED_SIZE sizeof(memblock_t)
+#define MEMBLOCK_RESERVED_SIZE (MALLOC_ALIGN_SIZE(sizeof(size_t) + sizeof(int) + sizeof(memblock_t *)))
+//#define MEMBLOCK_RESERVED_SIZE (sizeof(memblock_t))
 
 typedef struct memblocks_t_ {
    /* list fields */
