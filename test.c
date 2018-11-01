@@ -76,8 +76,8 @@ int main(int argc, char *argv[]) {
       eprintf("usage: %s [-n maxsize] [-p nptrs] [-o noperations] [-s seed]\n", argv[0]);
       exit(3);
    }
-   
-   const char *tmp_file = "__test.txt";
+
+   char cmp_file[100];
    int cmp_fd, urand_fd;
    mirrored_ptr_t ptrs[nptrs];
    int nsuccess = 0, nfail = 0;
@@ -94,9 +94,10 @@ int main(int argc, char *argv[]) {
    // if not null, then free, compare mem, then write
 
    /* open comparison file */
-   if ((cmp_fd = open(tmp_file, O_CREAT|O_TRUNC|O_RDWR, S_IRUSR|S_IWUSR)) < 0) {
+   sprintf(cmp_file, "%d.tmp", getpid());
+   if ((cmp_fd = open(cmp_file, O_CREAT|O_TRUNC|O_RDWR, S_IRUSR|S_IWUSR)) < 0) {
       char sbuf[1000];
-      sprintf(sbuf, "open: %s", tmp_file);
+      sprintf(sbuf, "open: %s", cmp_file);
       perror(sbuf);
       exit(1);
    }
@@ -200,8 +201,10 @@ int main(int argc, char *argv[]) {
    LOG("test results:\n");
    eprintf(" - successes:\t%d\n - failures:\t%d\n", nsuccess, nfail);
 
+   /* clean up files */
    close(cmp_fd);
    close(urand_fd);
+   remove(cmp_file);
    
    exit(0);
 
