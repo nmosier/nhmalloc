@@ -13,7 +13,7 @@ test: test.o btree.o list.o memblock.o my-malloc.so
 
 .PHONY: clean
 clean:
-	rm -f *.o *.so test
+	rm -f *.o *.so test *.tmp
 
 .PHONY: debug
 debug: test
