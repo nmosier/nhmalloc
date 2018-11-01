@@ -5,9 +5,11 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 #include "list.h"
 #include "memblock.h"
+#include "my-malloc.h"
 #include "debug.h"
 
 /* list_append()
@@ -23,7 +25,7 @@ void list_append(list_node_t *nodep, list_t *listp) {
       back = listp->back;
 
       if (DEBUG) {
-         tail = (list_node_t *) ((char *) back + back->size + sizeof(list_node_t));
+         tail = list_next(back, listp);
          if (tail != nodep) {
             eprintf("list_append: appended node at unexpected address %p (expected %p)\n",
                     (void *) nodep, (void *) tail);
@@ -45,7 +47,7 @@ void list_insert(list_node_t *nodep, list_t *listp) {
       list_append(nodep, listp);
    } else {
       /* insert somewhere in middle of list */
-      list_node_t *tail = (list_node_t *) ((char *) nodep + nodep->size + sizeof(list_node_t));
+      list_node_t *tail = list_next(nodep, listp);
       nodep->prevp = tail->prevp;
       tail->prevp = nodep;
    }
@@ -53,7 +55,7 @@ void list_insert(list_node_t *nodep, list_t *listp) {
 
 
 void list_merge(list_node_t *firstp, list_node_t *secondp, list_t *listp) {
-   list_node_t *thirdp = (list_node_t *) ((char *) secondp + secondp->size + sizeof(list_node_t));
+   list_node_t *thirdp = list_next(secondp, listp);
 
    /* update list back pointer if end of list; update prevp of next block
     * otherwise */
@@ -64,7 +66,7 @@ void list_merge(list_node_t *firstp, list_node_t *secondp, list_t *listp) {
    }
 
    /* update size of merged block */
-   firstp->size += secondp->size + sizeof(list_node_t);
+   firstp->size += secondp->size + MEMBLOCK_RESERVED_SIZE;
 }
 
 void list_print(list_t *listp) {
@@ -85,7 +87,7 @@ void list_print(list_t *listp) {
    ++i;
    if (list_it != listp->back) {
       do {
-         list_it = (list_node_t *) ((char *) list_it + list_it->size + sizeof(list_node_t));
+         list_it = list_next(list_it, listp);
          eprintf("%s%p: %-10zu"COLOR_RESET"  ->  ",
                  list_it->free ? COLOR_GREEN : COLOR_RED,
                  (void *) list_it, list_it->size);
@@ -104,7 +106,8 @@ typedef enum list_e_t_ {
    LIST_E_SUCCESS,
    LIST_E_PREV,
    LIST_E_SIZE,
-   LIST_E_FREE
+   LIST_E_FREE,
+   LIST_E_ALIGN
 } list_e_t;
 
 static list_e_t list_errno_;
@@ -119,8 +122,8 @@ static list_e_t list_errno_;
  * RETVAL: returns pointer to first node that violates above conditions; if list is
  *         valid, returns NULL
  */
-const list_node_t *list_validate(const list_t *listp) {
-   const list_node_t *list_it, *back, *prevp;
+list_node_t *list_validate(list_t *listp) {
+   list_node_t *list_it, *back, *prevp;
    
    list_errno_ = LIST_E_SUCCESS;
    
@@ -143,7 +146,7 @@ const list_node_t *list_validate(const list_t *listp) {
    prevp = list_it;
    if (list_it != back) {
       do {
-         list_it = (list_node_t *) ((char *) list_it + list_it->size + sizeof(list_node_t));
+         list_it = list_next(list_it, listp);
          if (prevp != list_it->prevp) {
             list_errno_ = LIST_E_PREV;
             return list_it;
@@ -156,6 +159,14 @@ const list_node_t *list_validate(const list_t *listp) {
             list_errno_ = LIST_E_FREE;
             return list_it;
          }
+
+         /* check alignment */
+         /* NOT NOW, THOUGH
+         if ((uint64_t) list_it & ~MALLOC_ALIGNMENT_MASK) {
+            list_errno_ = LIST_E_ALIGN;
+            return list_it;
+         }
+         */
          prevp = list_it;
       } while (list_it != back);
    }
@@ -173,10 +184,17 @@ const char *list_strerror(int errno) {
    case LIST_E_PREV:    return "Previous node mismatch";
    case LIST_E_SIZE:    return "Block is of size 0";
    case LIST_E_FREE:    return "Adjacent free nodes";
+   case LIST_E_ALIGN:   return "Memblock improperly aligned";
    default:             return "Unknown error";
    }
 }
 
 void list_perror(const char *prefix) {
    eprintf("%s: %s\n", prefix, list_strerror(list_errno_));
+}
+
+
+// wrapper for memblock_next
+list_node_t *list_next(list_node_t *node, list_t *listp) {
+   return memblock_next(node, listp);
 }

@@ -6,7 +6,6 @@
 #include "assert.h"
 #include "debug.h"
 
-
 /* memblocks_init()
  * DESC: initialize empty memblocks structure
  * PARAMS:
@@ -44,7 +43,7 @@ void memblock_insert(void *begin_addr, void *end_addr, memblocks_t *memblocks) {
 
    /* initialize memblock at begin_addr */
    header = (memblock_t *) begin_addr;
-   header->size = (char *) end_addr - (char *) begin_addr - sizeof(memblock_t);
+   header->size = (char *) end_addr - (char *)  memblock2ptr(header);
    header->free = true;
    
    /* insert into free tree & list */
@@ -73,14 +72,14 @@ int memblock_split(memblock_t *block, size_t size, memblocks_t *memblocks) {
    size_t remaining_size;
 
    /* check if there's enough space for 2nd block */
-   if (total_size <= size + sizeof(memblock_t)) {
+   if (total_size <= size + MEMBLOCK_RESERVED_SIZE) {
       return false;
    }
 
    /* split blocks */
-   remaining_size = total_size - size - sizeof(memblock_t);
+   remaining_size = total_size - size - MEMBLOCK_RESERVED_SIZE;
    block->size = size; // update size of first block
-   block2 = (bnode_t *) ((char *) (block + 1) + size);
+   block2 = memblock_next(block, memblocks);
 
    /* initialize new block */
    block2->size = remaining_size;
@@ -123,15 +122,12 @@ memblock_t *memblock_merge(memblock_t *block, int direction, memblocks_t *memblo
    }
    
    root = memblocks->root;
-   
+
+   /* initialize prevp and nextp block pointers (set to NULL if 
+    * they shouldn't be merged */
    prevp = (direction & MEMBLOCK_MERGE_PREV) ? block->prevp : NULL;
    prev_free = prevp && prevp->free;
-
-   if (block != memblocks->back && (direction & MEMBLOCK_MERGE_NEXT)) {
-      nextp = (memblock_t *) ((char *) block + block->size + sizeof(memblock_t));
-   } else {
-      nextp = NULL;
-   }
+   nextp = (direction & MEMBLOCK_MERGE_NEXT) ? memblock_next(block, memblocks) : NULL;
    next_free = nextp && nextp->free;
 
    mergedp = block;
@@ -171,7 +167,7 @@ memblock_t *memblock_merge(memblock_t *block, int direction, memblocks_t *memblo
  *  - memblocks: memblocks structure ptr
  */
 void memblock_free(void *begin_addr, memblocks_t *memblocks) {
-   memblock_t *block = ((memblock_t *) begin_addr) - 1;
+   memblock_t *block = ptr2memblock(begin_addr);
 
    if (DEBUG) {
       assert (block->free == false);
@@ -191,7 +187,7 @@ void memblock_free(void *begin_addr, memblocks_t *memblocks) {
  *  - memblocks: pointer to memblocks structure
  */
 void memblock_allocate(void *begin_addr, memblocks_t *memblocks) {
-   memblock_t *block = ((memblock_t *) begin_addr) - 1;
+   memblock_t *block = ptr2memblock(begin_addr);
 
    if (DEBUG) {
       assert (block->free == true);
@@ -251,11 +247,11 @@ bool memblocks_validate(memblocks_t *memblocks) {
 
 /* conversion between raw pointers and memblocks */
 memblock_t *ptr2memblock(void *ptr) {
-   return (memblock_t *) ptr - 1;
+   return (memblock_t *) ((char *) ptr - MEMBLOCK_RESERVED_SIZE);
 }
 
 void *memblock2ptr(memblock_t *block) {
-   return (void *) (block + 1);
+   return (void *) ((char *) block + MEMBLOCK_RESERVED_SIZE);
 }
 
 /* memblock_next()
@@ -268,7 +264,7 @@ void *memblock2ptr(memblock_t *block) {
  */
 memblock_t *memblock_next(memblock_t *block, memblocks_t *memblocks) {
    memblock_t *next_block = (memblock_t *) ((char *) memblock2ptr(block) + block->size);
-   return (next_block <= memblocks->back) ? next_block : NULL;
+   return ((void *) next_block < memblocks->break_addr) ? next_block : NULL;
 }
 
 /* included for symmetry */
