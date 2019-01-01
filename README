@@ -92,8 +92,3 @@ UPDATE:
 
 FUTURE WORK:
 * balancing of free tree
-
-RESOURCES:
-* https://en.cppreference.com/w/c/types/integer
-* https://renenyffenegger.ch/notes/development/languages/C-C-plus-plus/GCC/create-libraries/index
-* https://gcc.gnu.org/onlinedocs/cpp/Variadic-Macros.html
