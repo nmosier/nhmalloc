@@ -28,6 +28,9 @@ is enough room for the overhead) such that any extra space is reinserted into th
 as a new memblock. The (pointer to the non-reserved memory after the header of the) split
 memblock of the requested size is then returned by malloc().
 
+SYSTEM REQUIREMENTS:
+ * compatible with UNIX-based systems
+ * tested on macOS 10.14.1 (Darwin Kernel Version 18.2.0) and Linux (Fedora 27)
 
 INVARIANTS:
 The invariants of the underlying nhmalloc memblock structures upon entry and exit of malloc(),
