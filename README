@@ -1,22 +1,22 @@
-ASSIGNMENT 3 README
+nhmalloc README
 AUTHOR: Nick Mosier
 10/18/2018
 
 
 FILES:
- * my-malloc.c: contains implementations of malloc(), free(), calloc(), realloc()
+ * nhmalloc.c: contains implementations of malloc(), free(), calloc(), realloc()
  * memblock.c (memblock.h): contains underlying functions for handling 'memblocks', the
       fundamental type of chunks of memory that malloc allocates. These functions them-
       selves wrap more specialized functions in btree.c and list.c
  * btree.c (btree.h): contains functions for modifying the binary tree of free memblocks
  * list.c (list.h): contains functions for modifying the (reverse) linked list of all
       memblocks.
- * test.c: standalone program for testing my-malloc
+ * test.c: standalone program for testing nhmalloc
  * tests.sh: runs test program on multiple different configurations
 
 
 OVERVIEW:
-The fundamental type of a memory block managed by my-malloc is 'memblock_t'. These memory
+The fundamental type of a memory block managed by nhmalloc is 'memblock_t'. These memory
 blocks are in the heap (data segment) and end at the program break.
 The memory blocks are organized in two structures:
  * the FREE TREE: a binary search tree that contains all free memory blocks, sorted by size
@@ -30,7 +30,7 @@ memblock of the requested size is then returned by malloc().
 
 
 INVARIANTS:
-The invariants of the underlying my-malloc memblock structures upon entry and exit of malloc(),
+The invariants of the underlying nhmalloc memblock structures upon entry and exit of malloc(),
 free(), calloc(), and realloc() are the following:
  * the free tree never contains allocated memory blocks
  * the memblock list never contains two adjacent free memory blocks
@@ -46,12 +46,12 @@ Enable DEBUG mode:
               to
   >    #define DEBUG 1
 
-Compiling with my-malloc debug mode enabled will have malloc() and free() validate the
+Compiling with nhmalloc debug mode enabled will have malloc() and free() validate the
 state of the free tree and memblock list just before returning. The validation functions,
 wrapped in memblocks_validate(), verify the structures and enforce all the invariants
 listed under INVARIANTS.
 
-If an inconsistency is detected, then my-malloc will print out the free tree and the
+If an inconsistency is detected, then nhmalloc will print out the free tree and the
 memblock list in full (it can be quite long...). You'll definitely need a wide screen
 to view the free tree properly if there are more than say 30 free memblocks. The functions
 for printing out the list and tree manually are:
@@ -60,7 +60,7 @@ for printing out the list and tree manually are:
 
 
 TESTING:
-The file test.c contains a program that tests my-malloc and is configurable through
+The file test.c contains a program that tests nhmalloc and is configurable through
 command-line arguments. Here's the usage:
        usage: ./test [-n maxsize] [-p nptrs] [-o noperations] [-s seed]
               -n: maximum size (in bytes) per allocation using malloc()
@@ -70,20 +70,20 @@ command-line arguments. Here's the usage:
 Note that all command-line arguments are optional (there are presets in the program).
 
 Update: I added a new 'make' target called 'ls' -- the command 'make ls' runs the following:
-        LD_PRELOAD=./my-malloc.so ls -l -R ~
+        LD_PRELOAD=./nhmalloc.so ls -l -R ~
 It recursively lists all files in the user's directory.
 
 KNOWN BUGS: (none)
 
 UPDATE:
-* my-malloc now only returns 16-byte aligned pointers. This fixed the crash that would
+* nhmalloc now only returns 16-byte aligned pointers. This fixed the crash that would
   occur with the command
   $ ls -l /home
-  my-malloc now displays the entire long listing of the /home directiory, if you wait
-  a couple minutes. I also tried compiling parts of my program using gcc with my-malloc
+  nhmalloc now displays the entire long listing of the /home directiory, if you wait
+  a couple minutes. I also tried compiling parts of my program using gcc with nhmalloc
   preloaded, and that seemed to work.
 
-* my-malloc also now allocates the last 3 fields of the block header, which are only used
+* nhmalloc also now allocates the last 3 fields of the block header, which are only used
   when the block is free.
 
 * realloc() tries to merge the memory with adjacent blocks before allocating a new one

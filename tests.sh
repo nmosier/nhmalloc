@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export LD_PRELOAD=./my-malloc.so
+export LD_PRELOAD=./nhmalloc.so
 
 ./test
 ./test -p 10   -n 10000 -o 10000

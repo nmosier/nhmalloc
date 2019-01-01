@@ -7,7 +7,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include "my-malloc.h"
+#include "nhmalloc.h"
 #include "memblock.h"
 #include "btree.h"
 #include "list.h"
@@ -26,7 +26,7 @@ void *malloc(size_t size) {
 
    /* initialize globals if necessary */
    if (memblocks.break_addr == NULL) {
-      /* intialize mymalloc globals */
+      /* intialize nhmalloc globals */
       memblocks.break_addr = sbrk(0);
       memblocks_init(&memblocks);
    }
@@ -37,7 +37,7 @@ void *malloc(size_t size) {
       
       if (memblock_header == NULL) {
          if (DEBUG) {
-            LOG("my-malloc: expanding the heap...\n");
+            LOG("nhmalloc: expanding the heap...\n");
          }
 
          /* failed to find sufficiently sized memblock,
@@ -82,7 +82,7 @@ void *malloc(size_t size) {
 
       /* make sure properly aligned */
       if (!MALLOC_ALIGN_VALIDATE(new_ptr)) {
-         eprintf("my-malloc: internal error: pointer not %d-byte aligned: %p\n",
+         eprintf("nhmalloc: internal error: pointer not %d-byte aligned: %p\n",
                  MALLOC_ALIGN, (void *) new_ptr);
       }
    }

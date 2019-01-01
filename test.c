@@ -267,7 +267,7 @@ bool validate(mirrored_ptr_t *mirptr) {
    /* compare file buffer vs. malloc'ed heap pointer */
    if (memcmp(ptr, buf, size)) {
       /* memory differs! */
-      eprintf("test: validate: heap data at %p corrupted!\n", ptr);
+      eprintf("test: validate: heap data at %p corrupted!\n", (void *) ptr);
       return false;
    }
 

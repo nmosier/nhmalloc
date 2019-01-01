@@ -2,7 +2,7 @@
 #include <stdint.h>
 
 #include "memblock.h"
-#include "my-malloc.h"
+#include "nhmalloc.h"
 #include "btree.h"
 #include "list.h"
 #include "assert.h"

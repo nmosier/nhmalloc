@@ -9,7 +9,7 @@
 
 #include "list.h"
 #include "memblock.h"
-#include "my-malloc.h"
+#include "nhmalloc.h"
 #include "debug.h"
 
 /* list_append()

@@ -1,5 +1,5 @@
 // debug.h
-// includes macros for debugging my-malloc
+// includes macros for debugging nhmalloc
 
 #ifndef __DEBUG_H
 #define __DEBUG_H
